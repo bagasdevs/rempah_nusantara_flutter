@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class BuyerSignupScreen extends StatefulWidget {
@@ -21,9 +21,9 @@ class _BuyerSignupScreenState extends State<BuyerSignupScreen> {
 
   Future<void> _signup() async {
     if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Passwords do not match")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
       return;
     }
 
@@ -43,16 +43,22 @@ class _BuyerSignupScreenState extends State<BuyerSignupScreen> {
         },
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Check your email for confirmation!')),
-        );
-        context.go('/login');
+        AwesomeDialog(
+          context: context,
+          dialogType: DialogType.success,
+          animType: AnimType.bottomSlide,
+          title: 'Pendaftaran Berhasil!',
+          desc: 'Silakan periksa email Anda untuk konfirmasi akun.',
+          btnOkOnPress: () {
+            context.go('/login');
+          },
+        ).show();
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } catch (e) {
       if (mounted) {
@@ -107,17 +113,43 @@ class _BuyerSignupScreenState extends State<BuyerSignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Full Name', hint: 'John Doe', controller: _nameController),
+                _buildTextField(
+                  label: 'Full Name',
+                  hint: 'John Doe',
+                  controller: _nameController,
+                ),
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Email', hint: 'example@example.com', controller: _emailController),
+                _buildTextField(
+                  label: 'Email',
+                  hint: 'example@example.com',
+                  controller: _emailController,
+                ),
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Mobile Number', hint: '+123 456 789', controller: _mobileController),
+                _buildTextField(
+                  label: 'Mobile Number',
+                  hint: '+123 456 789',
+                  controller: _mobileController,
+                ),
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Date Of Birth', hint: 'DD / MM / YYYY', controller: _dobController),
+                _buildTextField(
+                  label: 'Date Of Birth',
+                  hint: 'DD / MM / YYYY',
+                  controller: _dobController,
+                ),
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Password', hint: '••••••••', isPassword: true, controller: _passwordController),
+                _buildTextField(
+                  label: 'Password',
+                  hint: '••••••••',
+                  isPassword: true,
+                  controller: _passwordController,
+                ),
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Confirm Password', hint: '••••••••', isPassword: true, controller: _confirmPasswordController),
+                _buildTextField(
+                  label: 'Confirm Password',
+                  hint: '••••••••',
+                  isPassword: true,
+                  controller: _confirmPasswordController,
+                ),
                 const SizedBox(height: 30),
                 const Text(
                   'By continuing, you agree to\nTerms of Use and Privacy Policy.',
@@ -137,13 +169,13 @@ class _BuyerSignupScreenState extends State<BuyerSignupScreen> {
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
-                    'Sign Up',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                          'Sign Up',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -174,8 +206,12 @@ class _BuyerSignupScreenState extends State<BuyerSignupScreen> {
     );
   }
 
-  Widget _buildTextField(
-      {required String label, required String hint, bool isPassword = false, required TextEditingController controller}) {
+  Widget _buildTextField({
+    required String label,
+    required String hint,
+    bool isPassword = false,
+    required TextEditingController controller,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -200,10 +236,7 @@ class _BuyerSignupScreenState extends State<BuyerSignupScreen> {
               borderSide: BorderSide.none,
             ),
             suffixIcon: isPassword
-                ? const Icon(
-                    Icons.visibility_off,
-                    color: Colors.white54,
-                  )
+                ? const Icon(Icons.visibility_off, color: Colors.white54)
                 : null,
           ),
           style: const TextStyle(color: Colors.white),

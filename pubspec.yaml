@@ -37,6 +37,7 @@ dependencies:
   go_router: ^16.3.0
   supabase_flutter: ^2.10.3
   app_links: ^6.2.0 # Versi yang benar
+  awesome_dialog: ^3.3.0
 
 dev_dependencies:
   flutter_test:

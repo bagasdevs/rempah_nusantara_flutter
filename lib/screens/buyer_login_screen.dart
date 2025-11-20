@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -27,17 +26,24 @@ class _BuyerLoginScreenState extends State<BuyerLoginScreen> {
         password: _passwordController.text.trim(),
       );
       if (mounted) {
-        context.pop(true); // Return true on successful login
+        context.go(
+          '/',
+        ); // Selalu arahkan ke halaman utama setelah login berhasil
       }
     } on AuthException catch (e) {
       if (mounted) {
         String errorMessage = e.message;
-        if (e.message.toLowerCase().contains('invalid login credentials')) {
-          errorMessage = 'Email atau password salah. Pastikan Anda sudah mendaftar dan mengonfirmasi email Anda.';
+        if (e.statusCode == '400' &&
+            e.message.toLowerCase().contains('invalid login credentials')) {
+          errorMessage =
+              'Email atau password salah. Pastikan Anda sudah mendaftar dan mengonfirmasi email Anda.';
+        } else if (e.message.toLowerCase().contains('email not confirmed')) {
+          errorMessage =
+              'Akun Anda belum aktif. Silakan periksa email Anda untuk link konfirmasi.';
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } catch (e) {
       if (mounted) {
@@ -83,9 +89,18 @@ class _BuyerLoginScreenState extends State<BuyerLoginScreen> {
                 ),
               ),
               const SizedBox(height: 60),
-              _buildTextField(label: 'Email', hint: 'example@example.com', controller: _emailController),
+              _buildTextField(
+                label: 'Email',
+                hint: 'example@example.com',
+                controller: _emailController,
+              ),
               const SizedBox(height: 20),
-              _buildTextField(label: 'Password', hint: '••••••••', isPassword: true, controller: _passwordController),
+              _buildTextField(
+                label: 'Password',
+                hint: '••••••••',
+                isPassword: true,
+                controller: _passwordController,
+              ),
               const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: _isLoading ? null : _login,
@@ -99,13 +114,13 @@ class _BuyerLoginScreenState extends State<BuyerLoginScreen> {
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
-                  'Log In',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                        'Log In',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
               const SizedBox(height: 16),
               OutlinedButton(
@@ -131,9 +146,7 @@ class _BuyerLoginScreenState extends State<BuyerLoginScreen> {
                 onPressed: () {},
                 child: const Text(
                   'Forgot Password?',
-                  style: TextStyle(
-                    color: Color(0xFF4A4A4A),
-                  ),
+                  style: TextStyle(color: Color(0xFF4A4A4A)),
                 ),
               ),
               const Spacer(),
@@ -192,8 +205,12 @@ class _BuyerLoginScreenState extends State<BuyerLoginScreen> {
     );
   }
 
-  Widget _buildTextField(
-      {required String label, required String hint, bool isPassword = false, required TextEditingController controller}) {
+  Widget _buildTextField({
+    required String label,
+    required String hint,
+    bool isPassword = false,
+    required TextEditingController controller,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -218,10 +235,7 @@ class _BuyerLoginScreenState extends State<BuyerLoginScreen> {
               borderSide: BorderSide.none,
             ),
             suffixIcon: isPassword
-                ? const Icon(
-                    Icons.visibility_off,
-                    color: Colors.white54,
-                  )
+                ? const Icon(Icons.visibility_off, color: Colors.white54)
                 : null,
           ),
           style: const TextStyle(color: Colors.white),

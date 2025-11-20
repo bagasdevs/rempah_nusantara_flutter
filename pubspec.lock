@@ -33,6 +33,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.4"
+  args:
+    dependency: transitive
+    description:
+      name: args
+      sha256: d0481093c50b1da8910eb0bb301626d4d8eb7284aa739614d2b394ee09e3ea04
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.7.0"
   async:
     dependency: transitive
     description:
@@ -41,6 +49,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.13.0"
+  awesome_dialog:
+    dependency: "direct main"
+    description:
+      name: awesome_dialog
+      sha256: "4c5821a0a637ceee022084e78c1b8237dd4b8bfca4dd24ac2484662a56707338"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.3.0"
   boolean_selector:
     dependency: transitive
     description:
@@ -160,6 +176,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.16.0"
+  graphs:
+    dependency: transitive
+    description:
+      name: graphs
+      sha256: "741bbf84165310a68ff28fe9e727332eef1407342fca52759cb21ad8177bb8d0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.3.2"
   gtk:
     dependency: transitive
     description:
@@ -252,10 +276,10 @@ packages:
     dependency: transitive
     description:
       name: meta
-      sha256: e3641ec5d63ebf0d9b41bd43201a66e3fc79a65db5f61fc181f04cd27aab950c
+      sha256: "23f08335362185a5ea2ad3a4e597f1375e78bce8a040df5c600c8d3552ef2394"
       url: "https://pub.dev"
     source: hosted
-    version: "1.16.0"
+    version: "1.17.0"
   mime:
     dependency: transitive
     description:
@@ -360,6 +384,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.2"
+  rive:
+    dependency: transitive
+    description:
+      name: rive
+      sha256: fc0abf65d03d1c9afaeb35be9e71c7cf04d2d1f76e94e69d2af1b3ba413cddf9
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.14.0-dev.14"
+  rive_native:
+    dependency: transitive
+    description:
+      name: rive_native
+      sha256: e9c7d36f19eb6d32f563825d4e9d5032b19a36d3ca3341641431035bca022d19
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.17"
   rxdart:
     dependency: transitive
     description:
@@ -497,10 +537,10 @@ packages:
     dependency: transitive
     description:
       name: test_api
-      sha256: "522f00f556e73044315fa4585ec3270f1808a4b186c936e612cab0b565ff1e00"
+      sha256: ab2726c1a94d3176a45960b6234466ec367179b87dd74f1611adb1f3b5fb9d55
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.6"
+    version: "0.7.7"
   typed_data:
     dependency: transitive
     description:
