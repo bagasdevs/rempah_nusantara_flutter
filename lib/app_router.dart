@@ -3,7 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/screens/buyer_login_screen.dart';
 import 'package:myapp/screens/buyer_signup_screen.dart';
 import 'package:myapp/screens/cart_screen.dart';
-import 'package:myapp/screens/farmer_profile_screen.dart';
+import 'package:myapp/screens/checkout_screen.dart';
+import 'package:myapp/screens/edit_profile_screen.dart';
+import 'package:myapp/screens/order_success_screen.dart';
+import 'package:myapp/screens/seller_profile_screen.dart';
 import 'package:myapp/screens/home_screen.dart';
 import 'package:myapp/screens/product_detail_screen.dart';
 import 'package:myapp/screens/settings_screen.dart';
@@ -11,7 +14,6 @@ import 'package:myapp/screens/edit_product_screen.dart';
 import 'package:myapp/screens/manage_products_screen.dart';
 import 'package:myapp/screens/seller_signup_screen.dart';
 import 'package:myapp/screens/splash_screen.dart';
-import 'package:myapp/screens/shop_screen.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/splash',
@@ -41,15 +43,19 @@ final GoRouter router = GoRouter(
       },
     ),
     GoRoute(
-      path: '/product',
+      path: '/product/:id',
       builder: (BuildContext context, GoRouterState state) {
-        return const ProductDetailScreen();
+        // Ekstrak 'id' dari path parameter dan ubah menjadi integer
+        final productId = int.parse(state.pathParameters['id']!);
+        return ProductDetailScreen(productId: productId);
       },
     ),
     GoRoute(
-      path: '/farmer-profile',
+      path: '/seller-profile/:id',
       builder: (BuildContext context, GoRouterState state) {
-        return const FarmerProfileScreen();
+        // Ekstrak 'id' dari path parameter
+        final sellerId = state.pathParameters['id']!;
+        return SellerProfileScreen(sellerId: sellerId);
       },
     ),
     GoRoute(
@@ -59,15 +65,26 @@ final GoRouter router = GoRouter(
       },
     ),
     GoRoute(
-      path: '/settings',
+      path: '/checkout',
       builder: (BuildContext context, GoRouterState state) {
-        return const SettingsScreen();
+        final extra = state.extra as Map<String, dynamic>;
+        return CheckoutScreen(
+          cartItems: extra['cartItems'],
+          subtotal: extra['subtotal'],
+        );
       },
     ),
     GoRoute(
-      path: '/shop',
+      path: '/order-success/:id',
       builder: (BuildContext context, GoRouterState state) {
-        return const ShopScreen();
+        final orderId = int.parse(state.pathParameters['id']!);
+        return OrderSuccessScreen(orderId: orderId);
+      },
+    ),
+    GoRoute(
+      path: '/settings',
+      builder: (BuildContext context, GoRouterState state) {
+        return const SettingsScreen();
       },
     ),
     GoRoute(
@@ -88,6 +105,12 @@ final GoRouter router = GoRouter(
         // Ambil productId dari extra. Jika tidak ada, berarti mode 'tambah'.
         final productId = state.extra as int?;
         return EditProductScreen(productId: productId);
+      },
+    ),
+    GoRoute(
+      path: '/edit-profile',
+      builder: (BuildContext context, GoRouterState state) {
+        return const EditProfileScreen();
       },
     ),
   ],

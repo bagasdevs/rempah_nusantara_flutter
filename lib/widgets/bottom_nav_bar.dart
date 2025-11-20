@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,40 +9,77 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      margin: const EdgeInsets.all(16),
+      height: 70,
       decoration: BoxDecoration(
         color: const Color(0xFF4D5D42),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(35),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
             blurRadius: 10,
             offset: const Offset(0, 5),
-          )
-        ]
+          ),
+        ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavBarItem(context, icon: Icons.home, route: '/'),
-          _buildNavBarItem(context, icon: Icons.shopping_bag, route: '/shop'),
-          _buildNavBarItem(context, icon: Icons.shopping_cart, route: '/cart'),
-          _buildNavBarItem(context, icon: Icons.person, route: '/settings'),
+          _buildNavItem(
+            context,
+            icon: Icons.home_outlined,
+            label: 'Home',
+            route: '/',
+          ),
+          _buildNavItem(
+            context,
+            icon: Icons.shopping_cart_outlined,
+            label: 'Cart',
+            route: '/cart',
+          ),
+          _buildNavItem(
+            context,
+            icon: Icons.settings_outlined,
+            label: 'Settings',
+            route: '/settings',
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildNavBarItem(BuildContext context, {required IconData icon, required String route}) {
+  Widget _buildNavItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String route,
+  }) {
     final bool isSelected = currentRoute == route;
-    return IconButton(
-      icon: Icon(
-        icon, 
-        color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
-        size: 30
+    return GestureDetector(
+      onTap: () {
+        if (!isSelected) {
+          context.go(route);
+        }
+      },
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
+            size: 28,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
       ),
-      onPressed: () => context.go(route),
     );
   }
 }

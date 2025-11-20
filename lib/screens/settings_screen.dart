@@ -118,6 +118,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSettingsList() {
     return Column(
       children: [
+        if (_user != null)
+          _buildSettingsItem(
+            icon: Icons.person_outline,
+            title: 'Edit Profil',
+            route: '/edit-profile',
+          ),
         _buildSettingsItem(
           icon: Icons.notifications_none_outlined,
           title: 'Notification',
@@ -141,6 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required IconData icon,
     required String title,
     bool isSwitch = false,
+    String? route,
   }) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF4D5D42)),
@@ -159,7 +166,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               color: Color(0xFF4D5D42),
               size: 16,
             ),
-      onTap: () {},
+      onTap: () {
+        if (route != null) context.push(route);
+      },
     );
   }
 

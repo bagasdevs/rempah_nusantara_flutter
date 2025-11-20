@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/widgets/bottom_nav_bar.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -12,7 +13,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<Map<String, dynamic>>> _productsFuture;
+  late Future<List<Map<String, dynamic>>>
+  _carouselProductsFuture; // Future baru untuk carousel
+  late Future<List<Map<String, dynamic>>> _categoriesFuture;
   String _userName = 'Guest';
+  int? _selectedCategoryId; // State untuk menyimpan ID kategori yang dipilih
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeader(),
+                  _buildAdCarousel(),
                   _buildCategoryChips(),
                   _buildRecommendedSection(context),
                   const SizedBox(height: 100),
@@ -46,12 +52,35 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchUserProfile();
-    _productsFuture = Supabase.instance.client
-        .from('products')
-        .select()
+    _carouselProductsFuture = _fetchProducts(
+      limit: 5,
+    ); // Ambil 5 produk untuk carousel
+    _categoriesFuture = _fetchCategories();
+    _productsFuture = _fetchProducts(); // Ambil semua produk saat awal
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchProducts({
+    int? categoryId,
+    int limit = 10,
+  }) async {
+    var queryBuilder = Supabase.instance.client.from('products').select();
+
+    if (categoryId != null) {
+      queryBuilder = queryBuilder.eq('category_id', categoryId);
+    }
+
+    final data = await queryBuilder
         .order('created_at', ascending: false)
-        .limit(10) // Ambil 10 produk terbaru sebagai contoh
-        .then((data) => data as List<Map<String, dynamic>>);
+        .limit(limit);
+    return data as List<Map<String, dynamic>>;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchCategories() async {
+    final response = await Supabase.instance.client
+        .from('categories')
+        .select('id, name')
+        .limit(4); // Ambil 4 kategori teratas
+    return response as List<Map<String, dynamic>>;
   }
 
   Future<void> _fetchUserProfile() async {
@@ -114,36 +143,117 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildAdCarousel() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _carouselProductsFuture, // Gunakan future khusus carousel
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox(
+            height: 200,
+            child: Center(child: Text('Memuat iklan...')),
+          );
+        }
+        final products = snapshot.data!;
+        return CarouselSlider.builder(
+          itemCount: products.length,
+          itemBuilder: (context, index, realIndex) {
+            final product = products[index];
+            final imageUrl = product['image_url'] as String?;
+            return Builder(
+              builder: (BuildContext context) {
+                return Container(
+                  width: MediaQuery.of(context).size.width,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 5.0,
+                    vertical: 20.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber,
+                    borderRadius: BorderRadius.circular(15),
+                    image: (imageUrl != null && imageUrl.isNotEmpty)
+                        ? DecorationImage(
+                            image: NetworkImage(imageUrl),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: (imageUrl == null || imageUrl.isEmpty)
+                      ? const Center(child: Text('Gambar tidak tersedia'))
+                      : null,
+                );
+              },
+            );
+          },
+          options: CarouselOptions(
+            height: 200,
+            autoPlay: true,
+            enlargeCenterPage: true,
+            aspectRatio: 16 / 9,
+            viewportFraction: 0.8,
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildCategoryChips() {
-    final categories = ['Aromatik', 'Rimpang', 'Daun', 'Biji & Buah', 'B'];
     return SizedBox(
       height: 50,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          bool isSelected = index == 0;
-          return Padding(
-            padding: EdgeInsets.only(
-              left: index == 0 ? 16.0 : 8.0,
-              right: index == categories.length - 1 ? 16.0 : 0,
-            ),
-            child: Chip(
-              label: Text(categories[index]),
-              backgroundColor: isSelected
-                  ? const Color(0xFF4D5D42)
-                  : const Color(0xFFFBF9F4),
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.black,
-              ),
-              shape: StadiumBorder(
-                side: BorderSide(
-                  color: isSelected
-                      ? const Color(0xFF4D5D42)
-                      : Colors.grey.shade300,
+      child: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _categoriesFuture,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final categories = snapshot.data!;
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              final categoryId = category['id'];
+              final bool isSelected = _selectedCategoryId == categoryId;
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: index == 0 ? 16.0 : 8.0,
+                  right: index == categories.length - 1 ? 16.0 : 0,
                 ),
-              ),
-            ),
+                child: ChoiceChip(
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  padding: EdgeInsets.zero,
+                  label: Text(category['name']),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedCategoryId =
+                            null; // Batalkan pilihan jika diklik lagi
+                      } else {
+                        _selectedCategoryId = categoryId; // Pilih kategori baru
+                      }
+                      // Ambil ulang produk dengan filter yang baru
+                      _productsFuture = _fetchProducts(
+                        categoryId: _selectedCategoryId,
+                      );
+                    });
+                  },
+                  backgroundColor: const Color(0xFFFBF9F4),
+                  selectedColor: const Color(0xFF4D5D42),
+                  labelStyle: TextStyle(
+                    fontSize: 13, // Perkecil font
+                    color: isSelected ? Colors.white : Colors.black,
+                  ),
+                  shape: StadiumBorder(
+                    side: BorderSide(
+                      color: isSelected
+                          ? const Color(0xFF4D5D42)
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
@@ -169,41 +279,41 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle('Produk Rekomendasi'),
-        SizedBox(
-          height: 240,
-          child: FutureBuilder<List<Map<String, dynamic>>>(
-            future: _productsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError ||
-                  !snapshot.hasData ||
-                  snapshot.data!.isEmpty) {
-                return const Center(child: Text('Belum ada produk tersedia.'));
-              }
-              final products = snapshot.data!;
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  final product = products[index];
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      left: index == 0 ? 16.0 : 8.0,
-                      right: index == products.length - 1 ? 16.0 : 0,
-                    ),
-                    child: _buildRecommendedItem(
-                      context,
-                      product['image_url'],
-                      product['name'],
-                      'Rp ${product['price']}',
-                    ),
-                  );
-                },
-              );
-            },
-          ),
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: _productsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError ||
+                !snapshot.hasData ||
+                snapshot.data!.isEmpty) {
+              return const Center(child: Text('Belum ada produk tersedia.'));
+            }
+            final products = snapshot.data!;
+            return GridView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: products.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.7, // Sesuaikan rasio ini jika perlu
+              ),
+              itemBuilder: (context, index) {
+                final product = products[index];
+                return _buildRecommendedItem(
+                  context,
+                  product['image_url'],
+                  product['name'],
+                  'Rp ${product['price']}',
+                  productId: product['id'],
+                );
+              },
+            );
+          },
         ),
       ],
     );
@@ -213,62 +323,57 @@ class _HomeScreenState extends State<HomeScreen> {
     BuildContext context,
     String? imageUrl,
     String name,
-    String price,
-  ) {
+    String price, {
+    required int productId,
+  }) {
     return GestureDetector(
-      onTap: () => context.push('/product'),
-      child: SizedBox(
-        width: 150,
-        child: Card(
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              (imageUrl != null && imageUrl.isNotEmpty)
+      onTap: () => context.push('/product/$productId'),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: (imageUrl != null && imageUrl.isNotEmpty)
                   ? Image.network(
                       imageUrl,
                       fit: BoxFit.cover,
-                      height: 150,
-                      width: 150,
+                      width: double.infinity,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        height: 150,
-                        width: 150,
                         color: Colors.grey[300],
                         child: const Icon(Icons.image_not_supported),
                       ),
                     )
                   : Container(
-                      height: 150,
-                      width: 150,
                       color: Colors.grey[300],
                       child: const Icon(Icons.image),
                     ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF4A4A4A),
-                      ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF4A4A4A),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      price,
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                  ],
-                ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    price,
+                    style: const TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
