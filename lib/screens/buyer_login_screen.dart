@@ -1,9 +1,65 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class BuyerLoginScreen extends StatelessWidget {
+class BuyerLoginScreen extends StatefulWidget {
   const BuyerLoginScreen({super.key});
+
+  @override
+  State<BuyerLoginScreen> createState() => _BuyerLoginScreenState();
+}
+
+class _BuyerLoginScreenState extends State<BuyerLoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _login() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      if (mounted) {
+        context.pop(true); // Return true on successful login
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        String errorMessage = e.message;
+        if (e.message.toLowerCase().contains('invalid login credentials')) {
+          errorMessage = 'Email atau password salah. Pastikan Anda sudah mendaftar dan mengonfirmasi email Anda.';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan yang tidak terduga: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,17 +83,12 @@ class BuyerLoginScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 60),
-              _buildTextField(label: 'Email', hint: 'example@example.com'),
+              _buildTextField(label: 'Email', hint: 'example@example.com', controller: _emailController),
               const SizedBox(height: 20),
-              _buildTextField(
-                  label: 'Password', hint: '••••••••', isPassword: true),
+              _buildTextField(label: 'Password', hint: '••••••••', isPassword: true, controller: _passwordController),
               const SizedBox(height: 40),
               ElevatedButton(
-                onPressed: () {
-                  // Logic for login will be added later
-                  // For now, let's navigate to home for demonstration
-                  context.go('/');
-                },
+                onPressed: _isLoading ? null : _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4D5D42),
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -45,7 +96,9 @@ class BuyerLoginScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(25.0),
                   ),
                 ),
-                child: const Text(
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
                   'Log In',
                   style: TextStyle(
                     fontSize: 18,
@@ -140,7 +193,7 @@ class BuyerLoginScreen extends StatelessWidget {
   }
 
   Widget _buildTextField(
-      {required String label, required String hint, bool isPassword = false}) {
+      {required String label, required String hint, bool isPassword = false, required TextEditingController controller}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -153,6 +206,7 @@ class BuyerLoginScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextField(
+          controller: controller,
           obscureText: isPassword,
           decoration: InputDecoration(
             hintText: hint,

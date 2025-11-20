@@ -85,36 +85,42 @@ class _CartScreenState extends State<CartScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF9F4),
       appBar: _buildAppBar(context),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: cartData.length,
-              itemBuilder: (context, index) {
-                final sellerData = cartData[index];
-                return _buildSellerSection(
-                  context,
-                  sellerName: sellerData['sellerName'],
-                  isSelected: sellerData['isSelected'],
-                  items: (sellerData['items'] as List).map((item) {
-                    return _buildCartItem(
-                      image: item['image'],
-                      name: item['name'],
-                      type: item['type'],
-                      price: item['price'],
-                      quantity: item['quantity'],
-                      totalPrice: item['totalPrice'],
-                    );
-                  }).toList(),
-                );
-              },
+          ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 200), // Padding for checkout and nav bar
+            itemCount: cartData.length,
+            itemBuilder: (context, index) {
+              final sellerData = cartData[index];
+              return _buildSellerSection(
+                context,
+                sellerName: sellerData['sellerName'],
+                isSelected: sellerData['isSelected'],
+                items: (sellerData['items'] as List).map((item) {
+                  return _buildCartItem(
+                    image: item['image'],
+                    name: item['name'],
+                    type: item['type'],
+                    price: item['price'],
+                    quantity: item['quantity'],
+                    totalPrice: item['totalPrice'],
+                  );
+                }).toList(),
+              );
+            },
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildCheckoutBar(),
+                const BottomNavBar(currentRoute: '/cart'),
+              ],
             ),
           ),
-          _buildCheckoutBar(),
         ],
       ),
-       bottomNavigationBar: const BottomNavBar(currentRoute: '/cart'),
     );
   }
 

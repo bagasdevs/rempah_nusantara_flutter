@@ -10,25 +10,32 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF9F4),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              _buildCategoryChips(),
-              _buildSectionTitle('Rempah Yang Sedang Trend'),
-              _buildTrendingCard(context),
-              _buildFavoritesSection(context),
-              _buildSectionTitle('Top Petani'),
-              _buildTopFarmers(context),
-              _buildRecommendedSection(context),
-              const SizedBox(height: 20),
-            ],
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  _buildCategoryChips(),
+                  _buildSectionTitle('Rempah Yang Sedang Trend'),
+                  _buildTrendingCard(context),
+                  _buildFavoritesSection(context),
+                  _buildSectionTitle('Top Petani'),
+                  _buildTopFarmers(context),
+                  _buildRecommendedSection(context),
+                  const SizedBox(height: 100), // Padding for floating nav bar
+                ],
+              ),
+            ),
           ),
-        ),
+          const Align(
+            alignment: Alignment.bottomCenter,
+            child: BottomNavBar(currentRoute: '/'),
+          ),
+        ],
       ),
-      bottomNavigationBar: const BottomNavBar(currentRoute: '/'),
     );
   }
 

@@ -11,15 +11,22 @@ class ShopScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF9F4),
       appBar: _buildAppBar(context),
-      body: Column(
+      body: Stack(
         children: [
-          _buildCategoryChips(),
-          Expanded(
-            child: _buildProductGrid(context),
+          Column(
+            children: [
+              _buildCategoryChips(),
+              Expanded(
+                child: _buildProductGrid(context),
+              ),
+            ],
+          ),
+          const Align(
+            alignment: Alignment.bottomCenter,
+            child: BottomNavBar(currentRoute: '/shop'),
           ),
         ],
       ),
-      bottomNavigationBar: const BottomNavBar(currentRoute: '/shop'),
     );
   }
 
@@ -91,7 +98,7 @@ class ShopScreen extends StatelessWidget {
     };
 
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Added bottom padding for nav bar
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 16,

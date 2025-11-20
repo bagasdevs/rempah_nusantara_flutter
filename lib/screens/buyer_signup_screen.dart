@@ -1,9 +1,84 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class BuyerSignupScreen extends StatelessWidget {
+class BuyerSignupScreen extends StatefulWidget {
   const BuyerSignupScreen({super.key});
+
+  @override
+  State<BuyerSignupScreen> createState() => _BuyerSignupScreenState();
+}
+
+class _BuyerSignupScreenState extends State<BuyerSignupScreen> {
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _mobileController = TextEditingController();
+  final _dobController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _signup() async {
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Passwords do not match")),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        data: {
+          'full_name': _nameController.text.trim(),
+          'mobile_number': _mobileController.text.trim(),
+          'date_of_birth': _dobController.text.trim(),
+        },
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Check your email for confirmation!')),
+        );
+        context.go('/login');
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan yang tidak terduga: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _mobileController.dispose();
+    _dobController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,21 +107,17 @@ class BuyerSignupScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Full Name', hint: 'John Doe'),
+                _buildTextField(label: 'Full Name', hint: 'John Doe', controller: _nameController),
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Email', hint: 'example@example.com'),
+                _buildTextField(label: 'Email', hint: 'example@example.com', controller: _emailController),
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Mobile Number', hint: '+123 456 789'),
+                _buildTextField(label: 'Mobile Number', hint: '+123 456 789', controller: _mobileController),
                 const SizedBox(height: 20),
-                _buildTextField(label: 'Date Of Birth', hint: 'DD / MM / YYY'),
+                _buildTextField(label: 'Date Of Birth', hint: 'DD / MM / YYYY', controller: _dobController),
                 const SizedBox(height: 20),
-                _buildTextField(
-                    label: 'Password', hint: '••••••••', isPassword: true),
+                _buildTextField(label: 'Password', hint: '••••••••', isPassword: true, controller: _passwordController),
                 const SizedBox(height: 20),
-                _buildTextField(
-                    label: 'Confirm Password',
-                    hint: '••••••••',
-                    isPassword: true),
+                _buildTextField(label: 'Confirm Password', hint: '••••••••', isPassword: true, controller: _confirmPasswordController),
                 const SizedBox(height: 30),
                 const Text(
                   'By continuing, you agree to\nTerms of Use and Privacy Policy.',
@@ -55,9 +126,7 @@ class BuyerSignupScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: () {
-                    // Logic for sign up will be added later
-                  },
+                  onPressed: _isLoading ? null : _signup,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4D5D42),
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -65,7 +134,9 @@ class BuyerSignupScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(25.0),
                     ),
                   ),
-                  child: const Text(
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
                     'Sign Up',
                     style: TextStyle(
                       fontSize: 18,
@@ -104,9 +175,7 @@ class BuyerSignupScreen extends StatelessWidget {
   }
 
   Widget _buildTextField(
-      {required String label,
-      required String hint,
-      bool isPassword = false}) {
+      {required String label, required String hint, bool isPassword = false, required TextEditingController controller}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -119,6 +188,7 @@ class BuyerSignupScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextField(
+          controller: controller,
           obscureText: isPassword,
           decoration: InputDecoration(
             hintText: hint,

@@ -3,29 +3,43 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/widgets/bottom_nav_bar.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  _SettingsScreenState createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isLoggedIn = false; // Default status login
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF9F4),
       appBar: _buildAppBar(context),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildSettingsList(),
-              const SizedBox(height: 32),
-              _buildSellProductCard(context),
-               const SizedBox(height: 24),
-              _buildLogoutSection(context),
-            ],
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Padding for nav bar
+              child: Column(
+                children: [
+                  _buildSettingsList(),
+                  const SizedBox(height: 32),
+                  _buildSellProductCard(context),
+                  const SizedBox(height: 24),
+                  _buildAuthSection(context),
+                ],
+              ),
+            ),
           ),
-        ),
+          const Align(
+            alignment: Alignment.bottomCenter,
+            child: BottomNavBar(currentRoute: '/settings'),
+          ),
+        ],
       ),
-      bottomNavigationBar: const BottomNavBar(currentRoute: '/settings'),
     );
   }
 
@@ -76,15 +90,15 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-   Widget _buildSellProductCard(BuildContext context) {
+  Widget _buildSellProductCard(BuildContext context) {
     return Card(
       elevation: 2,
       shadowColor: Colors.black.withOpacity(0.1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: InkWell(
-        onTap: () => context.go('/login'), // Arahkan ke login/signup penjual
+        onTap: () => context.go('/login'),
         borderRadius: BorderRadius.circular(15),
-        child: Padding(
+        child: const Padding(
           padding: const EdgeInsets.all(24.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -106,20 +120,42 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLogoutSection(BuildContext context) {
-    return Column(
-      children: [
-        ListTile(
-           leading: const Icon(Icons.logout, color: Color(0xFFD9534F)),
-           title: const Text('Log Out', style: TextStyle(color: Color(0xFFD9534F), fontSize: 16, fontWeight: FontWeight.w500)),
-           onTap: () => context.go('/login'),
-        ),
-        ListTile(
-           leading: const Icon(Icons.delete_outline, color: Color(0xFFD9534F)),
-           title: const Text('Delete Account', style: TextStyle(color: Color(0xFFD9534F), fontSize: 16, fontWeight: FontWeight.w500)),
-            onTap: () {},
-        ),
-      ],
-    );
+  Widget _buildAuthSection(BuildContext context) {
+    if (_isLoggedIn) {
+      return Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.logout, color: Color(0xFFD9534F)),
+            title: const Text('Log Out', style: TextStyle(color: Color(0xFFD9534F), fontSize: 16, fontWeight: FontWeight.w500)),
+            onTap: () {
+              setState(() {
+                _isLoggedIn = false;
+              });
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline, color: Color(0xFFD9534F)),
+            title: const Text('Delete Account', style: TextStyle(color: Color(0xFFD9534F), fontSize: 16, fontWeight: FontWeight.w500)),
+            onTap: () {
+              //  delete account logic
+            },
+          ),
+        ],
+      );
+    } else {
+      return ListTile(
+        leading: const Icon(Icons.login, color: Color(0xFF4D5D42)),
+        title: const Text('Log In', style: TextStyle(color: Color(0xFF4D5D42), fontSize: 16, fontWeight: FontWeight.w500)),
+        onTap: () async {
+          // Navigate to login and wait for result
+          final result = await context.push<bool>('/login');
+          if (result == true) {
+            setState(() {
+              _isLoggedIn = true;
+            });
+          }
+        },
+      );
+    }
   }
 }
