@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class SellerSignupScreen extends StatefulWidget {
   const SellerSignupScreen({super.key});
@@ -20,13 +20,7 @@ class _SellerSignupScreenState extends State<SellerSignupScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      // Seharusnya tidak terjadi jika alurnya benar, tapi sebagai pengaman
+    if (!ApiService.isAuthenticated || ApiService.currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Anda harus login terlebih dahulu.')),
       );
@@ -34,26 +28,29 @@ class _SellerSignupScreenState extends State<SellerSignupScreen> {
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      await Supabase.instance.client
-          .from('profiles')
-          .update({
-            'role': 'seller',
-            'business_name': _businessNameController.text.trim(),
-            'full_address': _addressController.text.trim(),
-          })
-          .eq('id', user.id);
+      // Update profile with business name as full_name and address
+      await ApiService.updateProfile(
+        userId: ApiService.currentUserId!,
+        fullName: _businessNameController.text.trim(),
+        address: _addressController.text.trim(),
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Selamat! Anda sekarang adalah penjual.'),
+            content: Text('Selamat! Profil penjual Anda berhasil diperbarui.'),
           ),
         );
-        // Arahkan ke home, saat kembali ke settings, role akan terupdate
-        context.go('/');
+        // Arahkan ke halaman manage products
+        context.go('/manage-products');
       }
     } catch (e) {
+      print('Error updating seller profile: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,

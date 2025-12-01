@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -22,54 +22,53 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<Map<String, dynamic>> _fetchProductDetails() async {
-    final response = await Supabase.instance.client
-        .from('products')
-        .select(
-          '*, profiles:seller_id(*)',
-        ) // Join profiles melalui kolom seller_id
-        .eq('id', widget.productId)
-        .single();
+    try {
+      final response = await ApiService.getProductDetail(widget.productId);
 
-    final categoryId = response['category_id'];
-    if (categoryId != null) {
-      // Setelah mendapatkan detail produk, ambil produk terkait
-      _relatedProductsFuture = _fetchRelatedProducts(
-        categoryId: categoryId,
-        currentProductId: response['id'],
-      );
-    } else {
-      // Jika tidak ada kategori, kembalikan daftar kosong untuk produk terkait.
-      _relatedProductsFuture = Future.value([]);
+      final categoryId = response['category_id'];
+      if (categoryId != null) {
+        // Setelah mendapatkan detail produk, ambil produk terkait
+        _relatedProductsFuture = _fetchRelatedProducts(
+          categoryId: categoryId,
+          currentProductId: response['id'],
+        );
+      } else {
+        // Jika tidak ada kategori, kembalikan daftar kosong untuk produk terkait.
+        _relatedProductsFuture = Future.value([]);
+      }
+
+      return response;
+    } catch (e) {
+      print('Error fetching product details: $e');
+      rethrow;
     }
-
-    return response;
   }
 
   Future<List<Map<String, dynamic>>> _fetchRelatedProducts({
     required int categoryId,
     required int currentProductId,
   }) async {
-    // Coba ambil produk dari kategori yang sama, kecuali produk saat ini
-    var response = await Supabase.instance.client
-        .from('products')
-        .select()
-        .eq('category_id', categoryId)
-        .neq(
-          'id',
-          currentProductId,
-        ) // Jangan tampilkan produk yang sedang dilihat
-        .limit(5); // Batasi 5 produk terkait
+    try {
+      // Coba ambil produk dari kategori yang sama
+      var response = await ApiService.getProducts(
+        categoryId: categoryId,
+        limit: 5,
+      );
 
-    // Jika tidak ada produk terkait di kategori yang sama, ambil produk lain secara acak
-    if (response.isEmpty) {
-      response = await Supabase.instance.client
-          .from('products')
-          .select()
-          .neq('id', currentProductId) // Tetap jangan tampilkan produk saat ini
-          .limit(5);
+      // Filter out current product
+      response = response.where((p) => p['id'] != currentProductId).toList();
+
+      // Jika tidak ada produk terkait di kategori yang sama, ambil produk lain
+      if (response.isEmpty) {
+        response = await ApiService.getProducts(limit: 5);
+        response = response.where((p) => p['id'] != currentProductId).toList();
+      }
+
+      return response;
+    } catch (e) {
+      print('Error fetching related products: $e');
+      return [];
     }
-
-    return response;
   }
 
   @override
@@ -155,38 +154,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> _addToCart(int productId) async {
     setState(() => _isAddingToCart = true);
 
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
-
-    if (user == null) {
+    if (!ApiService.isAuthenticated) {
       context.push('/login');
       setState(() => _isAddingToCart = false);
       return;
     }
 
     try {
-      // Cek apakah produk sudah ada di keranjang
-      final existingItem = await supabase
-          .from('cart_items')
-          .select('id, quantity')
-          .eq('user_id', user.id)
-          .eq('product_id', productId)
-          .maybeSingle();
-
-      if (existingItem != null) {
-        // Jika sudah ada, update quantity
-        await supabase
-            .from('cart_items')
-            .update({'quantity': (existingItem['quantity'] as int) + 1})
-            .eq('id', existingItem['id']);
-      } else {
-        // Jika belum ada, insert item baru
-        await supabase.from('cart_items').insert({
-          'user_id': user.id,
-          'product_id': productId,
-          'quantity': 1,
-        });
-      }
+      await ApiService.addToCart(productId: productId, quantity: 1);
 
       _showAddedToCartDialog();
     } catch (e) {

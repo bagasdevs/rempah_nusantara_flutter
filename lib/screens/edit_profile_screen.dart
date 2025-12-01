@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -14,7 +14,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
   bool _isLoading = true;
-  final _supabase = Supabase.instance.client;
 
   @override
   void initState() {
@@ -23,13 +22,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
+    if (!ApiService.isAuthenticated || ApiService.currentUserId == null) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
+
     try {
-      final userId = _supabase.auth.currentUser!.id;
-      final data = await _supabase
-          .from('profiles')
-          .select('full_name, address')
-          .eq('id', userId)
-          .single();
+      final data = await ApiService.getProfile(ApiService.currentUserId!);
       if (mounted) {
         setState(() {
           _nameController.text = data['full_name'] ?? '';
@@ -38,6 +39,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         });
       }
     } catch (e) {
+      print('Error loading profile: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -51,16 +53,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    if (!ApiService.isAuthenticated || ApiService.currentUserId == null) {
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      final userId = _supabase.auth.currentUser!.id;
-      await _supabase
-          .from('profiles')
-          .update({
-            'full_name': _nameController.text.trim(),
-            'address': _addressController.text.trim(),
-          })
-          .eq('id', userId);
+      await ApiService.updateProfile(
+        userId: ApiService.currentUserId!,
+        fullName: _nameController.text.trim(),
+        address: _addressController.text.trim(),
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -69,6 +73,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         context.pop(true); // Kembali dan kirim sinyal sukses
       }
     } catch (e) {
+      print('Error updating profile: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,

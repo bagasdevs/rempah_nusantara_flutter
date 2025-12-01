@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,9 +19,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _redirect() {
     // Cek apakah ada sesi pengguna yang aktif
-    final session = Supabase.instance.client.auth.currentSession;
     if (mounted) {
-      if (session != null) {
+      if (ApiService.isAuthenticated) {
         // Jika ada sesi (sudah login), arahkan ke home
         context.go('/');
       } else {

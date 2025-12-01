@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class BuyerLoginScreen extends StatefulWidget {
   const BuyerLoginScreen({super.key});
@@ -20,33 +20,25 @@ class _BuyerLoginScreenState extends State<BuyerLoginScreen> {
     });
 
     try {
-      final supabase = Supabase.instance.client;
-      await supabase.auth.signInWithPassword(
+      final result = await ApiService.login(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      if (mounted) {
-        context.go(
-          '/',
-        ); // Selalu arahkan ke halaman utama setelah login berhasil
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        String errorMessage = e.message;
-        if (e.statusCode == '400' &&
-            e.message.toLowerCase().contains('invalid login credentials')) {
-          errorMessage =
-              'Email atau password salah. Pastikan Anda sudah mendaftar dan mengonfirmasi email Anda.';
-        } else if (e.message.toLowerCase().contains('email not confirmed')) {
-          errorMessage =
-              'Akun Anda belum aktif. Silakan periksa email Anda untuk link konfirmasi.';
+
+      if (result['success'] == true) {
+        if (mounted) {
+          context.go('/'); // Arahkan ke halaman utama setelah login berhasil
         }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      } else {
+        throw Exception(result['message']);
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = e.toString().replaceAll('Exception: ', '');
+        if (errorMessage.toLowerCase().contains('invalid credentials')) {
+          errorMessage =
+              'Email atau password salah. Pastikan Anda sudah mendaftar.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Terjadi kesalahan yang tidak terduga: $e')),
         );

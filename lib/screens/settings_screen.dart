@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 import 'package:myapp/widgets/bottom_nav_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -11,8 +11,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final User? _user = Supabase.instance.client.auth.currentUser;
-  String? _userRole;
   bool _isLoading = true;
 
   @override
@@ -30,24 +28,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _isLoading = true;
     });
-    if (_user == null) {
+    if (!ApiService.isAuthenticated || ApiService.currentUserId == null) {
       setState(() => _isLoading = false);
       return;
     }
     try {
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select('role')
-          .eq('id', _user!.id)
-          .single();
+      await ApiService.getProfile(ApiService.currentUserId!);
       if (mounted) {
         setState(() {
-          _userRole = data['role'];
           _isLoading = false;
         });
       }
     } catch (e) {
-      // Handle error
+      print('Error loading profile: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -79,7 +72,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         _buildSettingsList(),
                         const SizedBox(height: 32),
-                        if (_user != null) _buildSellProductCard(context),
+                        if (ApiService.isAuthenticated)
+                          _buildSellProductCard(context),
                         const SizedBox(height: 24),
                         _buildAuthSection(context),
                       ],
@@ -118,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSettingsList() {
     return Column(
       children: [
-        if (_user != null)
+        if (ApiService.isAuthenticated)
           _buildSettingsItem(
             icon: Icons.person_outline,
             title: 'Edit Profil',
@@ -173,9 +167,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSellProductCard(BuildContext context) {
-    // Tentukan teks dan aksi berdasarkan peran pengguna
-    if (_userRole == 'seller') {
-      // Tampilan untuk Penjual
+    // Simplified - show manage products if authenticated
+    if (ApiService.isAuthenticated) {
       return _buildRoleCard(
         context: context,
         text: 'Kelola Produk',
@@ -186,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
 
-    // Tampilan untuk Pembeli (Buyer) yang ingin menjadi penjual
+    // Show seller signup for non-authenticated users
     return _buildRoleCard(
       context: context,
       text: 'Jual Produk Anda',
@@ -235,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAuthSection(BuildContext context) {
-    if (_user != null) {
+    if (ApiService.isAuthenticated) {
       return Column(
         children: [
           ListTile(
@@ -249,7 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             onTap: () async {
-              await Supabase.instance.client.auth.signOut();
+              await ApiService.logout();
               if (mounted) context.go('/login');
             },
           ),

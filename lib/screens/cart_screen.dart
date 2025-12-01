@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/widgets/bottom_nav_bar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -13,7 +13,6 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   List<Map<String, dynamic>> _cartItems = [];
   bool _isLoading = true;
-  final supabase = Supabase.instance.client;
 
   @override
   void initState() {
@@ -25,9 +24,7 @@ class _CartScreenState extends State<CartScreen> {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
-    final user = supabase.auth.currentUser;
-    if (user == null) {
-      // Jika user tidak login, kembalikan list kosong
+    if (!ApiService.isAuthenticated) {
       if (mounted) {
         setState(() {
           _cartItems = [];
@@ -37,16 +34,22 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    final response = await supabase
-        .from('cart_items')
-        .select('*, products(*)') // Join dengan tabel products
-        .eq('user_id', user.id)
-        .order('created_at', ascending: false);
-    if (mounted) {
-      setState(() {
-        _cartItems = response;
-        _isLoading = false;
-      });
+    try {
+      final cartData = await ApiService.getCart();
+      if (mounted) {
+        setState(() {
+          _cartItems = List<Map<String, dynamic>>.from(cartData['items'] ?? []);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching cart: $e');
+      if (mounted) {
+        setState(() {
+          _cartItems = [];
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -63,7 +66,7 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    // Optimistic UI update: Perbarui state lokal terlebih dahulu
+    // Optimistic UI update
     setState(() {
       final index = _cartItems.indexWhere((item) => item['id'] == cartItemId);
       if (index != -1) {
@@ -71,17 +74,21 @@ class _CartScreenState extends State<CartScreen> {
       }
     });
 
-    // Update database di latar belakang
-    await supabase
-        .from('cart_items')
-        .update({'quantity': newQuantity})
-        .eq('id', cartItemId);
+    try {
+      await ApiService.updateCartItem(
+        cartItemId: cartItemId,
+        quantity: newQuantity,
+      );
+    } catch (e) {
+      print('Error updating quantity: $e');
+      _fetchCartItems(); // Refresh on error
+    }
   }
 
   Future<void> _decreaseQuantity(int cartItemId, int currentQuantity) async {
     final newQuantity = currentQuantity - 1;
     if (newQuantity < 1) {
-      _deleteItem(cartItemId); // Hapus jika kuantitas menjadi 0
+      _deleteItem(cartItemId);
       return;
     }
 
@@ -92,10 +99,15 @@ class _CartScreenState extends State<CartScreen> {
       }
     });
 
-    await supabase
-        .from('cart_items')
-        .update({'quantity': newQuantity})
-        .eq('id', cartItemId);
+    try {
+      await ApiService.updateCartItem(
+        cartItemId: cartItemId,
+        quantity: newQuantity,
+      );
+    } catch (e) {
+      print('Error decreasing quantity: $e');
+      _fetchCartItems();
+    }
   }
 
   Future<void> _deleteItem(int cartItemId) async {
@@ -103,7 +115,13 @@ class _CartScreenState extends State<CartScreen> {
     setState(() {
       _cartItems.removeWhere((item) => item['id'] == cartItemId);
     });
-    await supabase.from('cart_items').delete().eq('id', cartItemId);
+
+    try {
+      await ApiService.removeFromCart(cartItemId);
+    } catch (e) {
+      print('Error deleting item: $e');
+      _fetchCartItems();
+    }
   }
 
   @override
@@ -166,8 +184,7 @@ class _CartScreenState extends State<CartScreen> {
     // Hitung total
     double subtotal = 0;
     for (var item in _cartItems) {
-      final product = item['products'];
-      final price = (product['price'] as num?)?.toDouble() ?? 0.0;
+      final price = (item['price'] as num?)?.toDouble() ?? 0.0;
       final quantity = (item['quantity'] as num?)?.toInt() ?? 0;
       subtotal += price * quantity;
     }
@@ -194,10 +211,9 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildCartItem(Map<String, dynamic> item) {
-    final product = item['products'] as Map<String, dynamic>;
-    final imageUrl = product['image_url'] as String?;
+    final imageUrl = item['image_url'] as String?;
     final currentQuantity = item['quantity'] as int;
-    final stock = product['stock'] as int? ?? 0;
+    final stock = item['stock'] as int? ?? 0;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -228,7 +244,7 @@ class _CartScreenState extends State<CartScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product['name'] ?? 'Nama Produk',
+                    item['product_name'] ?? 'Nama Produk',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -238,7 +254,7 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Rp ${product['price']}',
+                    'Rp ${item['price']}',
                     style: const TextStyle(
                       color: Color(0xFF4D5D42),
                       fontWeight: FontWeight.w600,

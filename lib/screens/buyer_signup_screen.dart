@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class BuyerSignupScreen extends StatefulWidget {
   const BuyerSignupScreen({super.key});
@@ -32,8 +32,7 @@ class _BuyerSignupScreenState extends State<BuyerSignupScreen> {
     });
 
     try {
-      final supabase = Supabase.instance.client;
-      await supabase.auth.signUp(
+      final result = await ApiService.signup(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
         data: {
@@ -42,23 +41,23 @@ class _BuyerSignupScreenState extends State<BuyerSignupScreen> {
           'date_of_birth': _dobController.text.trim(),
         },
       );
-      if (mounted) {
-        AwesomeDialog(
-          context: context,
-          dialogType: DialogType.success,
-          animType: AnimType.bottomSlide,
-          title: 'Pendaftaran Berhasil!',
-          desc: 'Silakan periksa email Anda untuk konfirmasi akun.',
-          btnOkOnPress: () {
-            context.go('/login');
-          },
-        ).show();
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+
+      if (result['success'] == true) {
+        if (mounted) {
+          AwesomeDialog(
+            context: context,
+            dialogType: DialogType.success,
+            animType: AnimType.bottomSlide,
+            title: 'Pendaftaran Berhasil!',
+            desc:
+                'Akun Anda telah dibuat. Anda akan diarahkan ke halaman utama.',
+            btnOkOnPress: () {
+              context.go('/');
+            },
+          ).show();
+        }
+      } else {
+        throw Exception(result['message']);
       }
     } catch (e) {
       if (mounted) {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems;
@@ -29,17 +29,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _fetchUserAddress() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
+    if (!ApiService.isAuthenticated || ApiService.currentUserId == null) {
       setState(() => _isLoading = false);
       return;
     }
     try {
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select('address') // Asumsi nama kolom alamat adalah 'address'
-          .eq('id', user.id)
-          .single();
+      final data = await ApiService.getProfile(ApiService.currentUserId!);
       if (mounted) {
         setState(() {
           _shippingAddress = data['address'] ?? 'Alamat belum diatur';
@@ -47,6 +42,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         });
       }
     } catch (e) {
+      print('Error fetching address: $e');
       if (mounted) {
         setState(() {
           _shippingAddress = 'Gagal memuat alamat';
@@ -67,27 +63,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _isCreatingOrder = true);
 
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) throw 'Pengguna tidak ditemukan';
+      if (!ApiService.isAuthenticated) {
+        throw 'Pengguna tidak ditemukan';
+      }
 
       final totalAmount = widget.subtotal + _shippingFee;
 
-      // Panggil fungsi RPC di Supabase
-      final newOrderId = await Supabase.instance.client.rpc(
-        'create_order_from_cart',
-        params: {
-          'p_user_id': user.id,
-          'p_total_amount': totalAmount,
-          'p_shipping_address': _shippingAddress,
-          'p_shipping_method': 'JNE REG', // Dummy method
-        },
+      // Panggil API untuk membuat order
+      final result = await ApiService.createOrderFromCart(
+        totalAmount: totalAmount,
+        shippingFee: _shippingFee,
+        shippingAddress: _shippingAddress!,
+        paymentMethod: 'COD', // Cash on Delivery
       );
 
       if (mounted) {
         // Navigasi ke halaman sukses
-        context.go('/order-success/${newOrderId}');
+        final orderId = result['order_id'];
+        context.go('/order-success/$orderId');
       }
     } catch (e) {
+      print('Error creating order: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,

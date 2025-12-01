@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/widgets/bottom_nav_bar.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -63,39 +63,41 @@ class _HomeScreenState extends State<HomeScreen> {
     int? categoryId,
     int limit = 10,
   }) async {
-    var queryBuilder = Supabase.instance.client.from('products').select();
-
-    if (categoryId != null) {
-      queryBuilder = queryBuilder.eq('category_id', categoryId);
+    try {
+      return await ApiService.getProducts(
+        categoryId: categoryId,
+        limit: limit,
+        orderBy: 'created_at',
+        orderDir: 'DESC',
+      );
+    } catch (e) {
+      print('Error fetching products: $e');
+      return [];
     }
-
-    final data = await queryBuilder
-        .order('created_at', ascending: false)
-        .limit(limit);
-    return data as List<Map<String, dynamic>>;
   }
 
   Future<List<Map<String, dynamic>>> _fetchCategories() async {
-    final response = await Supabase.instance.client
-        .from('categories')
-        .select('id, name')
-        .limit(4); // Ambil 4 kategori teratas
-    return response as List<Map<String, dynamic>>;
+    try {
+      return await ApiService.getCategories(limit: 4);
+    } catch (e) {
+      print('Error fetching categories: $e');
+      return [];
+    }
   }
 
   Future<void> _fetchUserProfile() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      try {
-        final data = await Supabase.instance.client
-            .from('profiles')
-            .select('full_name')
-            .eq('id', user.id)
-            .single();
-        if (mounted) setState(() => _userName = data['full_name'] ?? 'Guest');
-      } catch (e) {
-        // Biarkan nama default jika gagal
+    if (!ApiService.isAuthenticated || ApiService.currentUserId == null) {
+      return;
+    }
+
+    try {
+      final profile = await ApiService.getProfile(ApiService.currentUserId!);
+      if (mounted) {
+        setState(() => _userName = profile['full_name'] ?? 'Guest');
       }
+    } catch (e) {
+      print('Error fetching profile: $e');
+      // Biarkan nama default jika gagal
     }
   }
 
