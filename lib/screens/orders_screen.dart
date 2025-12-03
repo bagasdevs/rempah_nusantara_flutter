@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/config/app_theme.dart';
+import 'package:myapp/widgets/bottom_nav_bar.dart';
+import 'package:myapp/services/api_service.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -12,7 +14,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   final List<String> _tabs = [
     'Semua',
@@ -22,7 +24,9 @@ class _OrdersScreenState extends State<OrdersScreen>
     'Dibatalkan',
   ];
 
-  // Mock order data
+  List<Map<String, dynamic>> _orders = [];
+
+  // Mock order data (fallback)
   final List<Map<String, dynamic>> _mockOrders = [
     {
       'id': 'ORD-2024-001',
@@ -105,6 +109,7 @@ class _OrdersScreenState extends State<OrdersScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _loadOrders();
   }
 
   @override
@@ -113,12 +118,63 @@ class _OrdersScreenState extends State<OrdersScreen>
     super.dispose();
   }
 
+  Future<void> _loadOrders() async {
+    setState(() => _isLoading = true);
+
+    try {
+      print('📦 [ORDERS] Loading orders from API...');
+      final orders = await ApiService.getOrders();
+      print('✅ [ORDERS] Received ${orders.length} orders');
+      print('📊 [ORDERS] Orders data: $orders');
+
+      if (mounted) {
+        setState(() {
+          _orders = orders;
+          _isLoading = false;
+        });
+        print('🔄 [ORDERS] State updated with ${_orders.length} orders');
+      }
+    } catch (e) {
+      print('❌ [ORDERS] Error loading orders: $e');
+      if (mounted) {
+        setState(() {
+          _orders = _mockOrders; // Fallback to mock data
+          _isLoading = false;
+        });
+        print('⚠️ [ORDERS] Using mock data (${_mockOrders.length} orders)');
+      }
+    }
+  }
+
   List<Map<String, dynamic>> _getFilteredOrders() {
     final currentTab = _tabs[_tabController.index];
+    final ordersToFilter = _orders.isEmpty ? _mockOrders : _orders;
+
+    print('🔍 [ORDERS] Filtering for tab: $currentTab');
+    print('📊 [ORDERS] Total orders to filter: ${ordersToFilter.length}');
+
     if (currentTab == 'Semua') {
-      return _mockOrders;
+      print('✅ [ORDERS] Showing all ${ordersToFilter.length} orders');
+      return ordersToFilter;
     }
-    return _mockOrders.where((order) => order['status'] == currentTab).toList();
+
+    return ordersToFilter.where((order) {
+      final orderStatus = order['status']?.toString().toLowerCase() ?? '';
+      final paymentStatus =
+          order['payment_status']?.toString().toLowerCase() ?? '';
+
+      if (currentTab == 'Dikemas') {
+        return orderStatus == 'processing' ||
+            orderStatus == 'pending_payment' && paymentStatus == 'paid';
+      } else if (currentTab == 'Dikirim') {
+        return orderStatus == 'shipped';
+      } else if (currentTab == 'Selesai') {
+        return orderStatus == 'completed';
+      } else if (currentTab == 'Dibatalkan') {
+        return orderStatus == 'cancelled';
+      }
+      return false;
+    }).toList();
   }
 
   Color _getStatusColor(String status) {
@@ -152,10 +208,7 @@ class _OrdersScreenState extends State<OrdersScreen>
   }
 
   Future<void> _refreshOrders() async {
-    setState(() => _isLoading = true);
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => _isLoading = false);
+    await _loadOrders();
   }
 
   void _viewOrderDetail(Map<String, dynamic> order) {
@@ -206,7 +259,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                     size: 32,
                   ),
                   onPressed: () {
-                    context.pop();
+                    Navigator.of(context).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Terima kasih atas penilaian Anda!'),
@@ -423,9 +476,9 @@ class _OrdersScreenState extends State<OrdersScreen>
                               ),
                             ),
                             Text(
-                              'Rp ${item['price'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                              'Total: Rp ${_formatCurrency(order['total'])}',
                               style: AppTextStyles.bodyMedium.copyWith(
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                                 color: AppColors.primary,
                               ),
                             ),
@@ -534,7 +587,76 @@ class _OrdersScreenState extends State<OrdersScreen>
     );
   }
 
+  String _formatCurrency(dynamic amount) {
+    final value = (amount is String)
+        ? double.tryParse(amount) ?? 0
+        : (amount ?? 0);
+    final numValue = value is num ? value : 0;
+    return numValue
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
+  }
+
+  double _parsePrice(dynamic price) {
+    if (price == null) return 0.0;
+    if (price is num) return price.toDouble();
+    if (price is String) return double.tryParse(price) ?? 0.0;
+    return 0.0;
+  }
+
+  String _formatDate(String dateStr) {
+    if (dateStr.isEmpty) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Agu',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
+      ];
+      return '${date.day} ${months[date.month - 1]} ${date.year}';
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  String _formatStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending_payment':
+        return 'Menunggu Pembayaran';
+      case 'processing':
+        return 'Dikemas';
+      case 'shipped':
+        return 'Dikirim';
+      case 'completed':
+        return 'Selesai';
+      case 'cancelled':
+        return 'Dibatalkan';
+      default:
+        return status;
+    }
+  }
+
   Widget _buildOrderCard(Map<String, dynamic> order) {
+    // Normalize order data
+    final orderNumber = order['order_number'] ?? 'ORD-${order['id']}';
+    final orderDate = _formatDate(order['created_at'] ?? '');
+    final orderStatus = _formatStatus(order['status'] ?? 'pending_payment');
+    final totalPrice = _parsePrice(order['total_price']);
+    final shippingCost = _parsePrice(order['shipping_cost']);
+    final items = (order['items'] ?? []) as List;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 0,
@@ -566,13 +688,13 @@ class _OrdersScreenState extends State<OrdersScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            order['id'],
+                            orderNumber,
                             style: AppTextStyles.bodyMedium.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            order['date'],
+                            orderDate,
                             style: AppTextStyles.caption.copyWith(
                               color: Colors.grey[600],
                             ),
@@ -587,22 +709,22 @@ class _OrdersScreenState extends State<OrdersScreen>
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(order['status']).withOpacity(0.1),
+                      color: _getStatusColor(orderStatus).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          _getStatusIcon(order['status']),
+                          _getStatusIcon(orderStatus),
                           size: 14,
-                          color: _getStatusColor(order['status']),
+                          color: _getStatusColor(orderStatus),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          order['status'],
+                          orderStatus,
                           style: AppTextStyles.caption.copyWith(
-                            color: _getStatusColor(order['status']),
+                            color: _getStatusColor(orderStatus),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -614,55 +736,54 @@ class _OrdersScreenState extends State<OrdersScreen>
               const SizedBox(height: 16),
 
               // Order items preview
-              ...List.generate(
-                order['items'].length > 2 ? 2 : order['items'].length,
-                (index) {
-                  final item = order['items'][index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.image,
-                            color: Colors.grey[400],
-                            size: 20,
-                          ),
+              ...List.generate(items.length > 2 ? 2 : items.length, (index) {
+                final item = items[index];
+                final itemName =
+                    item['product_name'] ?? item['name'] ?? 'Produk';
+                final itemQty = item['quantity'] ?? 1;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            item['name'],
-                            style: AppTextStyles.bodySmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        child: Icon(
+                          Icons.image,
+                          color: Colors.grey[400],
+                          size: 20,
                         ),
-                        Text(
-                          '${item['quantity']}x',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: Colors.grey[600],
-                          ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          itemName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyMedium,
                         ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              if (order['items'].length > 2)
+                      ),
+                      Text(
+                        '${itemQty}x',
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              if (items.length > 2)
                 Padding(
-                  padding: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    '+${order['items'].length - 2} produk lainnya',
+                    '+${items.length - 2} produk lainnya',
                     style: AppTextStyles.caption.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[600],
                     ),
                   ),
                 ),
@@ -679,15 +800,26 @@ class _OrdersScreenState extends State<OrdersScreen>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Total Pembayaran',
-                        style: AppTextStyles.caption.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Total Pembayaran',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          if (shippingCost > 0)
+                            Text(
+                              'Ongkir: Rp ${_formatCurrency(shippingCost)}',
+                              style: AppTextStyles.caption.copyWith(
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        'Rp ${order['total'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                        'Rp ${_formatCurrency(totalPrice)}',
                         style: AppTextStyles.bodyLarge.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
@@ -749,7 +881,7 @@ class _OrdersScreenState extends State<OrdersScreen>
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go('/'),
         ),
         title: Text('Pesanan Saya', style: AppTextStyles.heading2),
         bottom: PreferredSize(
@@ -839,6 +971,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                 }).toList(),
               ),
       ),
+      bottomNavigationBar: const BottomNavBar(currentRoute: '/orders'),
     );
   }
 }

@@ -221,7 +221,10 @@ class _CartScreenState extends State<CartScreen> {
   double _calculateSubtotal() {
     double subtotal = 0;
     for (var item in _cartItems) {
-      final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+      final priceValue = item['price'];
+      final price = priceValue is String
+          ? double.tryParse(priceValue) ?? 0.0
+          : (priceValue as num?)?.toDouble() ?? 0.0;
       final quantity = (item['quantity'] as num?)?.toInt() ?? 0;
       subtotal += price * quantity;
     }
@@ -232,7 +235,7 @@ class _CartScreenState extends State<CartScreen> {
     double subtotal = 0;
     for (var item in _cartItems) {
       if (item['selected'] == true) {
-        final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+        final price = double.tryParse(item['price']?.toString() ?? '0') ?? 0.0;
         final quantity = (item['quantity'] as num?)?.toInt() ?? 0;
         subtotal += price * quantity;
       }
@@ -392,7 +395,7 @@ class _CartScreenState extends State<CartScreen> {
     final imageUrl = item['image_url'] as String?;
     final currentQuantity = item['quantity'] as int;
     final stock = item['stock'] as int? ?? 0;
-    final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+    final price = double.tryParse(item['price']?.toString() ?? '0') ?? 0.0;
     final isSelected = item['selected'] == true;
     final isLowStock = stock < 5;
 

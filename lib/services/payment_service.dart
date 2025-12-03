@@ -1,6 +1,9 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:midtrans_sdk/midtrans_sdk.dart';
 import 'api_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaymentService {
   static MidtransSDK? _midtransSDK;
@@ -12,6 +15,15 @@ class PaymentService {
     required bool isProduction,
   }) async {
     if (_isInitialized) return;
+
+    // Skip SDK initialization on web
+    if (kIsWeb) {
+      _isInitialized = true;
+      print(
+        '✅ [PaymentService] Web platform detected - using redirect URL method',
+      );
+      return;
+    }
 
     _midtransSDK = await MidtransSDK.init(
       config: MidtransConfig(
@@ -68,11 +80,38 @@ class PaymentService {
     }
   }
 
-  /// Start payment with Snap token
+  /// Start payment with Snap token or redirect URL
   static Future<Map<String, dynamic>?> startPayment({
     required String snapToken,
+    String? redirectUrl,
   }) async {
     try {
+      // For web, use redirect URL
+      if (kIsWeb) {
+        if (redirectUrl == null || redirectUrl.isEmpty) {
+          throw Exception('Redirect URL is required for web platform');
+        }
+
+        print('💳 [PaymentService] Opening payment page');
+        print('🔗 [PaymentService] URL: $redirectUrl');
+
+        // Open payment page in browser
+        final uri = Uri.parse(redirectUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          print('✅ [PaymentService] Payment page opened');
+        } else {
+          throw Exception('Could not launch payment URL');
+        }
+
+        // Return pending status - actual status will be checked via webhook/callback
+        return {
+          'status': 'pending',
+          'message': 'Payment page opened in new tab',
+        };
+      }
+
+      // For mobile, use SDK
       if (_midtransSDK == null) {
         throw Exception('Midtrans SDK not initialized. Call init() first.');
       }
@@ -138,9 +177,19 @@ class PaymentService {
       }
 
       // Step 2: Start Midtrans payment UI
-      await startPayment(snapToken: snapToken);
+      final redirectUrl = paymentData['redirect_url'];
+      await startPayment(snapToken: snapToken, redirectUrl: redirectUrl);
 
-      // Step 3: Check payment status from backend
+      // Step 3: For web, return pending status immediately
+      // Actual status will be updated via webhook
+      if (kIsWeb) {
+        return {
+          'payment_status': 'pending',
+          'message': 'Payment page opened. Please complete payment in new tab.',
+        };
+      }
+
+      // Step 3: For mobile, check payment status from backend
       final statusResponse = await checkPaymentStatus(orderId);
 
       print('✅ [PaymentService] Payment process completed');
@@ -153,6 +202,69 @@ class PaymentService {
       print('❌ [PaymentService] Payment process error: $e');
       rethrow;
     }
+  }
+
+  /// Start polling order status
+  /// Returns a Timer that can be cancelled
+  static Timer startPollingOrderStatus(
+    int orderId,
+    Function(Map<String, dynamic>) onUpdate, {
+    Duration interval = const Duration(seconds: 10),
+    int maxPolls = 30, // Poll for max 5 minutes (30 * 10 seconds)
+  }) {
+    print('🔄 [PaymentService] Starting to poll order #$orderId status...');
+    print(
+      '⏱️ [PaymentService] Polling every ${interval.inSeconds}s, max $maxPolls times',
+    );
+
+    int pollCount = 0;
+
+    return Timer.periodic(interval, (timer) async {
+      pollCount++;
+
+      try {
+        print('📡 [PaymentService] Polling attempt $pollCount/$maxPolls');
+
+        final response = await ApiService.checkPaymentStatus(orderId);
+
+        if (response['success'] == true && response['data'] != null) {
+          final order = response['data'];
+          final paymentStatus = order['payment_status'];
+          final orderStatus = order['status'];
+
+          print(
+            '📊 [PaymentService] Order status: $orderStatus, Payment: $paymentStatus',
+          );
+
+          // Call update callback
+          onUpdate(order);
+
+          // Stop polling if payment is complete (success or failed)
+          if (paymentStatus == 'paid' ||
+              paymentStatus == 'settlement' ||
+              paymentStatus == 'failed' ||
+              paymentStatus == 'expired' ||
+              paymentStatus == 'cancelled') {
+            print('✅ [PaymentService] Payment finalized: $paymentStatus');
+            timer.cancel();
+            return;
+          }
+        }
+
+        // Stop after max polls
+        if (pollCount >= maxPolls) {
+          print('⏱️ [PaymentService] Max polling attempts reached');
+          timer.cancel();
+        }
+      } catch (e) {
+        print('❌ [PaymentService] Polling error: $e');
+        // Continue polling even on error unless max reached
+        if (pollCount >= maxPolls) {
+          print('⏱️ [PaymentService] Max polling attempts reached after error');
+          timer.cancel();
+        }
+      }
+    });
   }
 
   /// Dispose SDK resources

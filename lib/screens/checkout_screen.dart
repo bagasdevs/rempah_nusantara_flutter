@@ -66,27 +66,40 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _loadAddresses() async {
+    print('🔄 [CHECKOUT] Starting to load addresses...');
     setState(() => _isLoadingAddresses = true);
 
     try {
+      print('🔐 [CHECKOUT] isAuthenticated: ${ApiService.isAuthenticated}');
+
       if (ApiService.isAuthenticated) {
+        print('📡 [CHECKOUT] Calling API to get addresses...');
         final addresses = await ApiService.getAddresses();
+
+        print('✅ [CHECKOUT] Received ${addresses.length} addresses');
+        print('📦 [CHECKOUT] Addresses data: $addresses');
 
         setState(() {
           _addresses = addresses;
 
           if (_addresses.isNotEmpty) {
+            print('🔍 [CHECKOUT] Looking for default address...');
             final defaultAddress = _addresses.firstWhere(
               (addr) => addr['is_default'] == true,
               orElse: () => _addresses.first,
             );
             _selectedAddressId = defaultAddress['id'];
             _selectedAddressData = defaultAddress;
+            print('✓ [CHECKOUT] Selected address ID: $_selectedAddressId');
+          } else {
+            print('⚠️ [CHECKOUT] No addresses found!');
           }
         });
+      } else {
+        print('❌ [CHECKOUT] User not authenticated!');
       }
     } catch (e) {
-      print('Error loading addresses: $e');
+      print('❌ [CHECKOUT] Error loading addresses: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal memuat alamat: ${e.toString()}')),
@@ -96,6 +109,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (mounted) {
         setState(() => _isLoadingAddresses = false);
       }
+      print(
+        '🏁 [CHECKOUT] Finished loading addresses. Total: ${_addresses.length}',
+      );
     }
   }
 
@@ -165,14 +181,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       // Get user data for customer info
       final userData = await ApiService.getCurrentUser();
-      final user = userData['data']['user'];
+      print('📦 [CHECKOUT] User data response: $userData');
+
+      // Handle different possible response structures
+      final user = userData['data'] ?? {};
+      final userMetadata = user['user_metadata'] ?? {};
+      print('👤 [CHECKOUT] User object: $user');
+      print('📋 [CHECKOUT] User metadata: $userMetadata');
 
       // Prepare items for Midtrans
       final items = widget.cartItems.map((item) {
         return {
           'id': item['product_id'].toString(),
           'name': item['product_name'],
-          'price': (item['price'] as num).toInt(),
+          'price': (double.tryParse(item['price']?.toString() ?? '0') ?? 0.0)
+              .toInt(),
           'quantity': item['quantity'],
         };
       }).toList();
@@ -184,9 +207,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         totalAmount: _total,
         items: items,
         customer: {
-          'name': user['fullname'] ?? user['username'] ?? 'User',
-          'email': user['email'],
-          'phone': user['phone'] ?? '08123456789',
+          'name':
+              userMetadata['full_name'] ??
+              user['fullname'] ??
+              user['full_name'] ??
+              user['username'] ??
+              user['name'] ??
+              'User',
+          'email': user['email'] ?? 'user@example.com',
+          'phone':
+              userMetadata['mobile_number'] ?? user['phone'] ?? '08123456789',
         },
         shippingAddress: _selectedAddressData,
         shippingCost: _shippingCost,
@@ -199,36 +229,131 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         final paymentStatus = paymentResult['payment_status'] ?? 'unknown';
         final isSuccess =
             paymentStatus == 'paid' || paymentStatus == 'settlement';
+        final isPending = paymentStatus == 'pending';
 
         if (isSuccess) {
           // Payment success
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Pembayaran berhasil! Pesanan sedang diproses.'),
+              backgroundColor: Colors.green,
             ),
           );
 
           // Navigate to order detail
-          context.go('/orders/$orderId');
+          context.go('/orders');
+        } else if (isPending) {
+          // Payment pending (web platform - opened in new tab)
+          // Show dialog with instructions
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.payment, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Text('Pembayaran Dibuka'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Halaman pembayaran Midtrans telah dibuka di tab/window baru.',
+                    style: AppTextStyles.body1,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Langkah selanjutnya:',
+                    style: AppTextStyles.body1.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  _buildInstructionItem(
+                    '1',
+                    'Selesaikan pembayaran di tab yang terbuka',
+                  ),
+                  _buildInstructionItem(
+                    '2',
+                    'Setelah selesai, kembali ke halaman ini',
+                  ),
+                  _buildInstructionItem(
+                    '3',
+                    'Status pesanan akan otomatis terupdate dalam beberapa saat',
+                  ),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.blue.shade700,
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Anda dapat melihat status pesanan di halaman "Pesanan Saya"',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    context.go('/');
+                  },
+                  child: Text('Kembali ke Beranda'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    context.go('/order-status/$orderId');
+                  },
+                  child: Text('Lihat Status Pesanan'),
+                ),
+              ],
+            ),
+          );
         } else {
           // Payment failed or cancelled
-          final message = paymentStatus == 'pending'
-              ? 'Menunggu pembayaran. Silakan selesaikan pembayaran Anda.'
-              : paymentStatus == 'cancelled'
+          final message = paymentStatus == 'cancelled'
               ? 'Pembayaran dibatalkan.'
               : 'Pembayaran gagal. Silakan coba lagi.';
 
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(message)));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message), backgroundColor: Colors.red),
+          );
         }
       }
-    } catch (e) {
-      print('Error during checkout: $e');
+    } catch (e, stackTrace) {
+      print('❌ [CHECKOUT] Error during checkout: $e');
+      print('📍 [CHECKOUT] Stack trace: $stackTrace');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Terjadi kesalahan: ${e.toString()}')),
+          SnackBar(
+            content: Text('Terjadi kesalahan: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     }
@@ -263,6 +388,37 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  Widget _buildInstructionItem(String number, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(child: Text(text, style: AppTextStyles.body2)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAddressStep() {
     if (_isLoadingAddresses) {
       return const Center(child: CircularProgressIndicator());
@@ -286,8 +442,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
-                // Navigate to add address
-                context.push('/address/add').then((_) => _loadAddresses());
+                // Navigate to address management
+                context.push('/address').then((_) => _loadAddresses());
               },
               icon: const Icon(Icons.add),
               label: const Text('Tambah Alamat'),
@@ -313,7 +469,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: () {
-              context.push('/address/add').then((_) => _loadAddresses());
+              context.push('/address').then((_) => _loadAddresses());
             },
             icon: const Icon(Icons.add),
             label: const Text('Tambah Alamat Baru'),

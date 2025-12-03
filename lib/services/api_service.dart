@@ -284,7 +284,10 @@ class ApiService {
 
   /// Get current user
   static Future<Map<String, dynamic>> getCurrentUser() async {
-    return await get('/api/auth/user');
+    print('📡 [API] Fetching current user from /api/auth/user');
+    final result = await get('/api/auth/user');
+    print('📦 [API] getCurrentUser response: $result');
+    return result;
   }
 
   // ==================== PRODUCTS METHODS ====================
@@ -482,6 +485,50 @@ class ApiService {
     }
   }
 
+  /// Get user orders
+  static Future<List<Map<String, dynamic>>> getOrders({
+    String? status,
+    int? limit,
+    int? offset,
+  }) async {
+    print('📡 [API] Fetching orders from /api/orders');
+
+    final params = <String, String>{};
+    if (status != null) params['status'] = status;
+    if (limit != null) params['limit'] = limit.toString();
+    if (offset != null) params['offset'] = offset.toString();
+
+    final queryString = params.isEmpty
+        ? ''
+        : '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+
+    print('📡 [API] Query string: $queryString');
+
+    final result = await get('/api/orders$queryString');
+
+    print('📦 [API] getOrders response: $result');
+
+    if (result['success'] == true) {
+      final orders = List<Map<String, dynamic>>.from(result['data'] ?? []);
+      print('✅ [API] Successfully parsed ${orders.length} orders');
+      return orders;
+    } else {
+      print('❌ [API] Failed to get orders: ${result['message']}');
+      throw Exception(result['message']);
+    }
+  }
+
+  /// Get order detail
+  static Future<Map<String, dynamic>> getOrderDetail(int orderId) async {
+    final result = await get('/api/orders/detail?id=$orderId');
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
   // ==================== PAYMENT METHODS (MIDTRANS) ====================
 
   /// Create payment transaction (get Snap token)
@@ -514,7 +561,7 @@ class ApiService {
     final result = await get('/api/payments/status?order_id=$orderId');
 
     if (result['success'] == true) {
-      return result['data'];
+      return result;
     } else {
       throw Exception(result['message']);
     }
@@ -524,11 +571,17 @@ class ApiService {
 
   /// Get all addresses
   static Future<List<Map<String, dynamic>>> getAddresses() async {
+    print('📡 [API] Fetching addresses from /api/addresses');
     final result = await get('/api/addresses');
 
+    print('📦 [API] getAddresses response: $result');
+
     if (result['success'] == true) {
-      return List<Map<String, dynamic>>.from(result['data']);
+      final addresses = List<Map<String, dynamic>>.from(result['data']);
+      print('✅ [API] Successfully parsed ${addresses.length} addresses');
+      return addresses;
     } else {
+      print('❌ [API] Failed to get addresses: ${result['message']}');
       throw Exception(result['message']);
     }
   }
