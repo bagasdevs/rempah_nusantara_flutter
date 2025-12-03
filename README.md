@@ -10,11 +10,11 @@
 
 ## 📱 Tentang Aplikasi
 
-**Rempah Nusantara** adalah aplikasi mobile yang menggabungkan:
+**Rempah Nusantara** adalah aplikasi mobile marketplace yang menggabungkan:
 - 🛒 **E-Commerce** - Jual beli rempah-rempah tradisional Indonesia
-- 📖 **Recipe Platform** - Berbagi dan mencari resep masakan dengan rempah
-- 👥 **Community** - Koneksi antara petani, penjual, dan pembeli
-- 🌱 **Educational** - Edukasi tentang rempah-rempah nusantara
+- 👥 **Marketplace** - Koneksi langsung antara petani, penjual, dan pembeli
+- 🏪 **Seller Platform** - Platform untuk petani dan penjual mengelola produk
+- 🌱 **Educational** - Informasi dan edukasi tentang rempah-rempah nusantara
 
 ---
 
@@ -28,13 +28,6 @@
 - Integrasi pembayaran dengan Midtrans
 - Tracking pesanan real-time dengan auto-polling
 - Review & rating produk
-
-### 🍳 Recipe Platform
-- Jelajah resep trending
-- Detail resep lengkap (bahan, langkah, foto)
-- Tambah resep sendiri (user-generated content)
-- Favorit resep
-- Filter berdasarkan kategori & tingkat kesulitan
 
 ### 👤 User Account
 - Profil pengguna dengan statistik
@@ -113,14 +106,14 @@ flutter build ios --release
 lib/
 ├── config/
 │   └── app_theme.dart          # Design system (colors, typography, sizes)
-├── screens/                     # 31+ screen files
+├── screens/                     # 29 screen files
 │   ├── home_screen.dart
 │   ├── product_detail_screen.dart
 │   ├── cart_screen.dart
 │   ├── checkout_screen.dart
 │   ├── order_status_screen.dart
 │   ├── orders_screen.dart
-│   ├── add_recipe_screen.dart
+│   ├── manage_products_screen.dart
 │   └── ...
 ├── widgets/                     # Reusable widgets
 │   ├── bottom_nav_bar.dart
@@ -218,12 +211,6 @@ DELETE /api/addresses/:id
 POST   /api/payments/create-transaction
 POST   /api/payments/webhook
 
-// Recipes
-GET    /api/recipes
-GET    /api/recipes/:id
-POST   /api/recipes
-PUT    /api/recipes/:id
-
 // User
 GET    /api/users/profile
 PUT    /api/users/profile
@@ -317,11 +304,6 @@ Aplikasi terintegrasi dengan Midtrans untuk payment gateway:
 - Notification
 - Settings
 
-### Recipes (3 screens)
-- Trending Recipes
-- Recipe Detail
-- Add Recipe
-
 ### Settings (4 screens)
 - Settings
 - Notification Settings
@@ -338,7 +320,7 @@ Aplikasi terintegrasi dengan Midtrans untuk payment gateway:
 - Splash
 - Onboarding
 
-**Total: 33 Screens** ✅
+**Total: 29 Screens** ✅
 
 ---
 
@@ -462,10 +444,10 @@ flutter_native_splash: ^latest   # Splash screen
 ### 🔄 Phase 3 - Backend Completion (IN PROGRESS)
 - [ ] Complete all API endpoints
 - [ ] Implement webhook handling
-- [ ] Image upload service
-- [ ] Recipe API integration
+- [ ] Image upload service for products
 - [ ] Search & filter optimization
 - [ ] Timezone handling (Asia/Jakarta)
+- [ ] Seller dashboard analytics
 
 ### 📅 Phase 4 - Advanced Features (PLANNED)
 - [ ] Push notifications (FCM)
@@ -520,7 +502,7 @@ MissingPluginException: No implementation found for method init
 ## 📊 Project Status
 
 ```
-UI Development:          ✅ 100% Complete (33/33 screens)
+UI Development:          ✅ 100% Complete (29/29 screens)
 API Integration:         ✅ 85% Complete
   - Auth:                ✅ Done
   - Products:            ✅ Done
@@ -529,12 +511,12 @@ API Integration:         ✅ 85% Complete
   - Payment:             ✅ Done
   - Orders:              ✅ Done
   - Addresses:           ✅ Done
-  - Recipes:             🔄 In Progress
-Backend Requirements:    🔄 85% Complete
+Backend Requirements:    🔄 80% Complete
 Testing:                 📅 Planned
 Documentation:           ✅ Complete
 Code Quality:            ⭐⭐⭐⭐⭐ Excellent (No errors/warnings)
 
+Focus: Spice E-Commerce Marketplace for Farmers & Buyers
 Last Updated: January 2024
 Version: 1.0.0-beta
 ```
@@ -600,15 +582,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 1. ✅ `GET /api/orders` - List orders with filters
 2. ✅ `GET /api/orders/detail` - Order detail
 3. 🔄 `POST /api/payments/webhook` - Midtrans webhook handler
-4. 🔄 Recipe endpoints (CRUD)
+4. 🔄 Product image upload endpoint
 5. 🔄 Search & filter optimization
+6. 🔄 Seller dashboard & analytics
 
 **Important:**
 - Set timezone to `Asia/Jakarta` on backend
 - Ensure all numeric fields return as numbers (not strings)
 - Implement proper CORS headers
 - Use HTTPS with valid SSL certificate
-- Handle file uploads for products/recipes
+- Handle file uploads for product images
 
 ### Security Checklist
 - [ ] Never commit `.env` file
