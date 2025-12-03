@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
@@ -56,9 +57,30 @@ class ApiService {
         url = '$url/';
       }
 
+      print('📥 [GET] $url');
+      print('📥 [GET] Headers: ${_buildHeaders()}');
+
       final response = await http.get(Uri.parse(url), headers: _buildHeaders());
+
+      print('✅ [GET] Status: ${response.statusCode}');
+
       return _handleResponse(response);
+    } on SocketException catch (e) {
+      print('❌ [GET] SocketException: $e');
+      print('❌ Check internet connection and server availability');
+      throw Exception(
+        'Network error: Unable to connect to server. Check your internet connection.',
+      );
+    } on HandshakeException catch (e) {
+      print('❌ [GET] HandshakeException: $e');
+      print('❌ SSL/TLS error - check server certificate');
+      throw Exception('SSL error: Server certificate issue. Contact support.');
+    } on HttpException catch (e) {
+      print('❌ [GET] HttpException: $e');
+      throw Exception('HTTP error: $e');
     } catch (e) {
+      print('❌ [GET] Unknown error: $e');
+      print('❌ Error type: ${e.runtimeType}');
       throw Exception('Network error: $e');
     }
   }
@@ -80,12 +102,26 @@ class ApiService {
         body: jsonEncode(body),
       );
 
-      print('📥 [POST] Status: ${response.statusCode}');
-      print('📥 [POST] Response: ${response.body}');
+      print('✅ [POST] Status: ${response.statusCode}');
+      print('✅ [POST] Response: ${response.body}');
 
       return _handleResponse(response);
+    } on SocketException catch (e) {
+      print('❌ [POST] SocketException: $e');
+      print('❌ Check internet connection and server availability');
+      throw Exception(
+        'Network error: Unable to connect to server. Check your internet connection.',
+      );
+    } on HandshakeException catch (e) {
+      print('❌ [POST] HandshakeException: $e');
+      print('❌ SSL/TLS error - check server certificate');
+      throw Exception('SSL error: Server certificate issue. Contact support.');
+    } on HttpException catch (e) {
+      print('❌ [POST] HttpException: $e');
+      throw Exception('HTTP error: $e');
     } catch (e) {
       print('❌ [POST] Error: $e');
+      print('❌ Error type: ${e.runtimeType}');
       throw Exception('Network error: $e');
     }
   }
@@ -96,13 +132,31 @@ class ApiService {
     Map<String, dynamic> body,
   ) async {
     try {
+      final url = '$baseUrl$endpoint';
+      print('📝 [PUT] $url');
+      print('📝 [PUT] Headers: ${_buildHeaders()}');
+      print('📝 [PUT] Body: ${jsonEncode(body)}');
+
       final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
+        Uri.parse(url),
         headers: _buildHeaders(),
         body: jsonEncode(body),
       );
+
+      print('✅ [PUT] Status: ${response.statusCode}');
+      print('✅ [PUT] Response: ${response.body}');
+
       return _handleResponse(response);
+    } on SocketException catch (e) {
+      print('❌ [PUT] SocketException: $e');
+      throw Exception(
+        'Network error: Unable to connect to server. Check your internet connection.',
+      );
+    } on HandshakeException catch (e) {
+      print('❌ [PUT] HandshakeException: $e');
+      throw Exception('SSL error: Server certificate issue. Contact support.');
     } catch (e) {
+      print('❌ [PUT] Error: $e');
       throw Exception('Network error: $e');
     }
   }
@@ -110,12 +164,28 @@ class ApiService {
   /// DELETE request
   static Future<Map<String, dynamic>> delete(String endpoint) async {
     try {
+      final url = '$baseUrl$endpoint';
+      print('🗑️ [DELETE] $url');
+      print('🗑️ [DELETE] Headers: ${_buildHeaders()}');
+
       final response = await http.delete(
-        Uri.parse('$baseUrl$endpoint'),
+        Uri.parse(url),
         headers: _buildHeaders(),
       );
+
+      print('✅ [DELETE] Status: ${response.statusCode}');
+
       return _handleResponse(response);
+    } on SocketException catch (e) {
+      print('❌ [DELETE] SocketException: $e');
+      throw Exception(
+        'Network error: Unable to connect to server. Check your internet connection.',
+      );
+    } on HandshakeException catch (e) {
+      print('❌ [DELETE] HandshakeException: $e');
+      throw Exception('SSL error: Server certificate issue. Contact support.');
     } catch (e) {
+      print('❌ [DELETE] Error: $e');
       throw Exception('Network error: $e');
     }
   }
@@ -126,10 +196,12 @@ class ApiService {
     String bucket,
   ) async {
     try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/api/storage/upload'),
-      );
+      final url = '$baseUrl/api/storage/upload';
+      print('📤 [UPLOAD] $url');
+      print('📤 [UPLOAD] File: $filePath');
+      print('📤 [UPLOAD] Bucket: $bucket');
+
+      var request = http.MultipartRequest('POST', Uri.parse(url));
 
       request.headers.addAll(_buildHeaders());
       request.files.add(await http.MultipartFile.fromPath('file', filePath));
@@ -138,8 +210,19 @@ class ApiService {
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
+      print('✅ [UPLOAD] Status: ${response.statusCode}');
+
       return _handleResponse(response);
+    } on SocketException catch (e) {
+      print('❌ [UPLOAD] SocketException: $e');
+      throw Exception(
+        'Network error: Unable to connect to server. Check your internet connection.',
+      );
+    } on HandshakeException catch (e) {
+      print('❌ [UPLOAD] HandshakeException: $e');
+      throw Exception('SSL error: Server certificate issue. Contact support.');
     } catch (e) {
+      print('❌ [UPLOAD] Error: $e');
       throw Exception('Upload error: $e');
     }
   }
@@ -399,6 +482,288 @@ class ApiService {
     }
   }
 
+  // ==================== PAYMENT METHODS (MIDTRANS) ====================
+
+  /// Create payment transaction (get Snap token)
+  static Future<Map<String, dynamic>> createPaymentTransaction({
+    required int orderId,
+    required double grossAmount,
+    required List<Map<String, dynamic>> items,
+    Map<String, dynamic>? customer,
+    Map<String, dynamic>? shippingAddress,
+    double? shippingCost,
+  }) async {
+    final result = await post('/api/payments/create-transaction', {
+      'order_id': orderId,
+      'gross_amount': grossAmount,
+      'items': items,
+      if (customer != null) 'customer': customer,
+      if (shippingAddress != null) 'shipping_address': shippingAddress,
+      if (shippingCost != null) 'shipping_cost': shippingCost,
+    });
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  /// Check payment status
+  static Future<Map<String, dynamic>> checkPaymentStatus(int orderId) async {
+    final result = await get('/api/payments/status?order_id=$orderId');
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  // ==================== ADDRESSES METHODS ====================
+
+  /// Get all addresses
+  static Future<List<Map<String, dynamic>>> getAddresses() async {
+    final result = await get('/api/addresses');
+
+    if (result['success'] == true) {
+      return List<Map<String, dynamic>>.from(result['data']);
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  /// Get address detail
+  static Future<Map<String, dynamic>> getAddressDetail(int addressId) async {
+    final result = await get('/api/addresses/detail?id=$addressId');
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  /// Create address
+  static Future<Map<String, dynamic>> createAddress({
+    required String label,
+    required String recipientName,
+    required String phone,
+    required String address,
+    String? city,
+    String? province,
+    String? postalCode,
+    double? latitude,
+    double? longitude,
+    String? notes,
+    bool? isDefault,
+  }) async {
+    final result = await post('/api/addresses', {
+      'label': label,
+      'recipient_name': recipientName,
+      'phone': phone,
+      'address': address,
+      if (city != null) 'city': city,
+      if (province != null) 'province': province,
+      if (postalCode != null) 'postal_code': postalCode,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (notes != null) 'notes': notes,
+      if (isDefault != null) 'is_default': isDefault,
+    });
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  /// Update address
+  static Future<Map<String, dynamic>> updateAddress({
+    required int addressId,
+    String? label,
+    String? recipientName,
+    String? phone,
+    String? address,
+    String? city,
+    String? province,
+    String? postalCode,
+    double? latitude,
+    double? longitude,
+    String? notes,
+    bool? isDefault,
+  }) async {
+    final result = await put('/api/addresses/detail?id=$addressId', {
+      if (label != null) 'label': label,
+      if (recipientName != null) 'recipient_name': recipientName,
+      if (phone != null) 'phone': phone,
+      if (address != null) 'address': address,
+      if (city != null) 'city': city,
+      if (province != null) 'province': province,
+      if (postalCode != null) 'postal_code': postalCode,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (notes != null) 'notes': notes,
+      if (isDefault != null) 'is_default': isDefault,
+    });
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  /// Delete address
+  static Future<void> deleteAddress(int addressId) async {
+    final result = await delete('/api/addresses/detail?id=$addressId');
+
+    if (result['success'] != true) {
+      throw Exception(result['message']);
+    }
+  }
+
+  // ==================== FAVORITES METHODS ====================
+
+  /// Get all favorited products
+  static Future<List<Map<String, dynamic>>> getFavorites() async {
+    final result = await get('/api/favorites');
+
+    if (result['success'] == true) {
+      return List<Map<String, dynamic>>.from(result['data']);
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  /// Add product to favorites
+  static Future<Map<String, dynamic>> addToFavorites(int productId) async {
+    final result = await post('/api/favorites', {'product_id': productId});
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  /// Remove product from favorites
+  static Future<void> removeFromFavorites(int productId) async {
+    final result = await delete('/api/favorites?product_id=$productId');
+
+    if (result['success'] != true) {
+      throw Exception(result['message']);
+    }
+  }
+
+  // ==================== REVIEWS METHODS ====================
+
+  /// Get product reviews
+  static Future<Map<String, dynamic>> getProductReviews({
+    required int productId,
+    int page = 1,
+    int limit = 10,
+    int? rating,
+  }) async {
+    String endpoint =
+        '/api/reviews?product_id=$productId&page=$page&limit=$limit';
+
+    if (rating != null) {
+      endpoint += '&rating=$rating';
+    }
+
+    final result = await get(endpoint);
+
+    if (result['success'] == true) {
+      return {
+        'reviews': List<Map<String, dynamic>>.from(result['data']),
+        'pagination': result['pagination'],
+        'rating_summary': result['rating_summary'],
+      };
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  /// Create product review
+  static Future<Map<String, dynamic>> createReview({
+    required int productId,
+    required int rating,
+    required String comment,
+    int? orderId,
+    List<String>? images,
+  }) async {
+    final result = await post('/api/reviews', {
+      'product_id': productId,
+      'rating': rating,
+      'comment': comment,
+      if (orderId != null) 'order_id': orderId,
+      if (images != null) 'images': images,
+    });
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  // ==================== NOTIFICATIONS METHODS ====================
+
+  /// Get notifications
+  static Future<Map<String, dynamic>> getNotifications({
+    int page = 1,
+    int limit = 20,
+    bool? isRead,
+    String? type,
+  }) async {
+    String endpoint = '/api/notifications?page=$page&limit=$limit';
+
+    if (isRead != null) {
+      endpoint += '&is_read=$isRead';
+    }
+
+    if (type != null) {
+      endpoint += '&type=$type';
+    }
+
+    final result = await get(endpoint);
+
+    if (result['success'] == true) {
+      return {
+        'notifications': List<Map<String, dynamic>>.from(result['data']),
+        'pagination': result['pagination'],
+        'unread_count': result['unread_count'],
+      };
+    } else {
+      throw Exception(result['message']);
+    }
+  }
+
+  /// Mark notification(s) as read
+  static Future<void> markNotificationsAsRead({
+    int? notificationId,
+    List<int>? notificationIds,
+    bool markAll = false,
+  }) async {
+    Map<String, dynamic> body = {};
+
+    if (markAll) {
+      body['mark_all'] = true;
+    } else if (notificationId != null) {
+      body['notification_id'] = notificationId;
+    } else if (notificationIds != null) {
+      body['notification_ids'] = notificationIds;
+    }
+
+    final result = await post('/api/notifications/mark-read', body);
+
+    if (result['success'] != true) {
+      throw Exception(result['message']);
+    }
+  }
+
   // ==================== PROFILE METHODS ====================
 
   /// Get profile
@@ -450,12 +815,23 @@ class ApiService {
   }
 
   static Map<String, dynamic> _handleResponse(http.Response response) {
-    final body = jsonDecode(response.body);
+    try {
+      final body = jsonDecode(response.body);
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return body;
-    } else {
-      throw Exception(body['message'] ?? 'Request failed');
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return body;
+      } else {
+        final errorMessage = body['message'] ?? 'Request failed';
+        print('⚠️ [Response] Error ${response.statusCode}: $errorMessage');
+        throw Exception(errorMessage);
+      }
+    } on FormatException catch (e) {
+      print('❌ [Response] JSON Parse Error: $e');
+      print('❌ [Response] Body: ${response.body}');
+      throw Exception('Invalid response format from server');
+    } catch (e) {
+      print('❌ [Response] Error: $e');
+      rethrow;
     }
   }
 }

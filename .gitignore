@@ -43,3 +43,60 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Web related
+/web/flutter_service_worker.js
+/web/version.json
+/web/flutter.js
+
+# iOS related
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/.symlinks/
+**/ios/Pods/
+**/ios/DerivedData/
+**/ios/Runner.xcworkspace/xcuserdata/
+
+# Environment & Configuration
+.env
+.env.local
+.env.*.local
+*.env
+config.local.dart
+
+# API Keys & Secrets (IMPORTANT!)
+**/google-services.json
+**/GoogleService-Info.plist
+**/*-key.p12
+**/*.keystore
+!example.keystore
+key.properties
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.gr.dart
+*.config.dart
+*.mocks.dart
+
+# Package related
+.packages
+.flutter-plugins
+pubspec.lock
+
+# Test coverage
+lcov.info
+
+# IDEs
+.vscode/
+.fleet/
+.idx/
+
+# Platform specific
+.fvm/
+.metadata

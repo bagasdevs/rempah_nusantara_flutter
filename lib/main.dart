@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/app_router.dart';
 import 'package:myapp/services/api_service.dart';
+import 'package:myapp/config/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +19,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Rempah Nusantara',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: AppTheme.lightTheme(),
+      debugShowCheckedModeBanner: false,
       routerConfig: router,
     );
   }
