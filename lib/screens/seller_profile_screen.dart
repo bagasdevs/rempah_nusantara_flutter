@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class SellerProfileScreen extends StatefulWidget {
   final String sellerId;
@@ -25,35 +25,41 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   Future<Map<String, dynamic>> _fetchSellerProfile() async {
-    final response = await Supabase.instance.client
-        .from('profiles')
-        .select()
-        .eq('id', widget.sellerId)
-        .single();
-    return response;
+    try {
+      return await ApiService.getProfile(widget.sellerId);
+    } catch (e) {
+      print('Error fetching seller profile: $e');
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> _fetchSellerProducts() async {
-    final response = await Supabase.instance.client
-        .from('products')
-        .select()
-        .eq('seller_id', widget.sellerId)
-        .order('created_at', ascending: false);
+    try {
+      final sellerProducts = await ApiService.getProducts(
+        sellerId: widget.sellerId,
+        limit: 100,
+        orderBy: 'created_at',
+        orderDir: 'DESC',
+      );
 
-    // Hitung total produk dan stok
-    int stockCount = 0;
-    for (var product in response) {
-      stockCount += (product['stock'] as int?) ?? 0;
+      // Hitung total produk dan stok
+      int stockCount = 0;
+      for (var product in sellerProducts) {
+        stockCount += (product['stock'] as int?) ?? 0;
+      }
+
+      if (mounted) {
+        setState(() {
+          _totalProducts = sellerProducts.length;
+          _totalStock = stockCount;
+        });
+      }
+
+      return sellerProducts;
+    } catch (e) {
+      print('Error fetching seller products: $e');
+      return [];
     }
-
-    if (mounted) {
-      setState(() {
-        _totalProducts = response.length;
-        _totalStock = stockCount;
-      });
-    }
-
-    return response;
   }
 
   @override

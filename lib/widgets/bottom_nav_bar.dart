@@ -39,6 +39,12 @@ class BottomNavBar extends StatelessWidget {
           ),
           _buildNavItem(
             context,
+            icon: Icons.person_outline,
+            label: 'Profile',
+            route: '/profile',
+          ),
+          _buildNavItem(
+            context,
             icon: Icons.settings_outlined,
             label: 'Settings',
             route: '/settings',

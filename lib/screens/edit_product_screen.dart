@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 
 class EditProductScreen extends StatefulWidget {
@@ -23,7 +23,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
   final _stockController = TextEditingController();
 
   bool _isLoading = false;
-  final _supabase = Supabase.instance.client;
 
   // State untuk kategori dan gambar
   late Future<List<Map<String, dynamic>>> _categoriesFuture;
@@ -41,18 +40,18 @@ class _EditProductScreenState extends State<EditProductScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchCategories() async {
-    final response = await _supabase.from('categories').select('id, name');
-    return response as List<Map<String, dynamic>>;
+    try {
+      return await ApiService.getCategories();
+    } catch (e) {
+      print('Error fetching categories: $e');
+      return [];
+    }
   }
 
   Future<void> _fetchProductDetails() async {
     setState(() => _isLoading = true);
     try {
-      final product = await _supabase
-          .from('products')
-          .select()
-          .eq('id', widget.productId!)
-          .single();
+      final product = await ApiService.getProductDetail(widget.productId!);
 
       _nameController.text = product['name'] ?? '';
       _descriptionController.text = product['description'] ?? '';
@@ -61,6 +60,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
       _existingImageUrl = product['image_url'];
       _selectedCategoryId = product['category_id'];
     } catch (e) {
+      print('Error fetching product details: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -86,36 +86,27 @@ class _EditProductScreenState extends State<EditProductScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (!ApiService.isAuthenticated || ApiService.currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Anda harus login terlebih dahulu')),
+      );
+      return;
+    }
 
-    final user = _supabase.auth.currentUser;
-    if (user == null) return;
+    setState(() => _isLoading = true);
 
     String? imageUrl;
 
     // 1. Proses upload gambar jika ada gambar baru yang dipilih
     if (_selectedImageFile != null) {
       try {
-        final fileName =
-            '${DateTime.now().millisecondsSinceEpoch}.${_selectedImageFile!.path.split('.').last}';
-        final filePath = '${user.id}/$fileName';
-
-        if (kIsWeb) {
-          // Logika untuk Web: Gunakan uploadBinary.
-          final imageBytes = await _selectedImageFile!.readAsBytes();
-          await _supabase.storage
-              .from('product_images')
-              .uploadBinary(filePath, imageBytes);
-        } else {
-          // Logika untuk Mobile: Gunakan upload dengan File.
-          final file = File(_selectedImageFile!.path);
-          await _supabase.storage.from('product_images').upload(filePath, file);
-        }
-        imageUrl = _supabase
-            .storage // Ambil URL setelah upload berhasil
-            .from('product_images')
-            .getPublicUrl(filePath);
+        final result = await ApiService.uploadFile(
+          _selectedImageFile!.path,
+          'product_images',
+        );
+        imageUrl = result['file_url'];
       } catch (e) {
+        print('Error uploading image: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Gagal mengupload gambar: $e')),
@@ -130,44 +121,37 @@ class _EditProductScreenState extends State<EditProductScreen> {
     }
 
     try {
-      // Ambil nama penjual dari profil
-      final profile = await _supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .single();
-      final sellerName = profile['full_name'];
-
-      final productData = {
-        'name': _nameController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'price': double.parse(_priceController.text.trim()),
-        'stock': int.parse(_stockController.text.trim()),
-        'category_id': _selectedCategoryId,
-        'seller_id': user.id,
-        'seller_name': sellerName,
-        'image_url':
-            imageUrl, // Gunakan URL dari gambar yang diupload atau yang sudah ada
-      };
-
       if (widget.isEditMode) {
         // Update mode
-        await _supabase
-            .from('products')
-            .update(productData)
-            .eq('id', widget.productId!);
+        await ApiService.updateProduct(
+          productId: widget.productId!,
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim(),
+          price: double.parse(_priceController.text.trim()),
+          stock: int.parse(_stockController.text.trim()),
+          categoryId: _selectedCategoryId,
+          imageUrl: imageUrl,
+        );
       } else {
         // Create mode
-        await _supabase.from('products').insert(productData);
+        await ApiService.createProduct(
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim(),
+          price: double.parse(_priceController.text.trim()),
+          stock: int.parse(_stockController.text.trim()),
+          categoryId: _selectedCategoryId,
+          imageUrl: imageUrl,
+        );
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Produk berhasil disimpan!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Produk berhasil disimpan!')),
+        );
         context.pop(true); // Kembali dan kirim sinyal untuk refresh
       }
     } catch (e) {
+      print('Error saving product: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,

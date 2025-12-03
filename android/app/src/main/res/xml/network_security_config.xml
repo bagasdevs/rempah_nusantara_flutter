@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Production configuration: Only allow HTTPS -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust system certificates (Google, Let's Encrypt, etc.) -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Domain-specific config for api.bagas.website -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.bagas.website</domain>
+        <domain includeSubdomains="true">bagas.website</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Debug config - only if you need to test with localhost/IP during development -->
+    <!-- Uncomment the section below ONLY for development/testing -->
+    <!--
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+    -->
+</network-security-config>

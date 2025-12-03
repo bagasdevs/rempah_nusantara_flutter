@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myapp/services/api_service.dart';
 
 class ManageProductsScreen extends StatefulWidget {
   const ManageProductsScreen({super.key});
@@ -11,7 +11,6 @@ class ManageProductsScreen extends StatefulWidget {
 
 class _ManageProductsScreenState extends State<ManageProductsScreen> {
   late Future<List<Map<String, dynamic>>> _productsFuture;
-  final _supabase = Supabase.instance.client;
 
   @override
   void initState() {
@@ -20,16 +19,21 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchProducts() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) {
+    if (!ApiService.isAuthenticated || ApiService.currentUserId == null) {
       return [];
     }
-    final response = await _supabase
-        .from('products')
-        .select()
-        .eq('seller_id', userId)
-        .order('created_at', ascending: false);
-    return response as List<Map<String, dynamic>>;
+
+    try {
+      return await ApiService.getProducts(
+        sellerId: ApiService.currentUserId,
+        limit: 100,
+        orderBy: 'created_at',
+        orderDir: 'DESC',
+      );
+    } catch (e) {
+      print('Error fetching products: $e');
+      return [];
+    }
   }
 
   void _refreshProducts() {
@@ -59,12 +63,13 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
 
     if (confirmed == true) {
       try {
-        await _supabase.from('products').delete().eq('id', productId);
+        await ApiService.deleteProduct(productId);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Produk berhasil dihapus')),
         );
         _refreshProducts();
       } catch (e) {
+        print('Error deleting product: $e');
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Gagal menghapus produk: $e')));
