@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:myapp/config/app_theme.dart';
 import 'package:myapp/services/api_service.dart';
+import 'package:myapp/utils/image_utils.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -238,19 +239,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         }
 
         final product = snapshot.data!;
+        final productName = product['name'] as String? ?? 'Produk';
         // Mock multiple images - in real app, get from API
         final List<String> images = [
-          (product['image_url'] as String?) ??
-              'https://via.placeholder.com/400',
-          'https://via.placeholder.com/400',
-          'https://via.placeholder.com/400',
+          (product['image_url'] as String?) ?? '',
+          '',
+          '',
         ];
 
         return Scaffold(
           backgroundColor: AppColors.background,
           body: CustomScrollView(
             slivers: [
-              _buildSliverAppBar(images),
+              _buildSliverAppBar(images, productName),
               SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,7 +278,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildSliverAppBar(List<String> images) {
+  Widget _buildSliverAppBar(List<String> images, String productName) {
     return SliverAppBar(
       expandedHeight: 300,
       pinned: true,
@@ -360,23 +361,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               items: images.map((imageUrl) {
                 return Builder(
                   builder: (BuildContext context) {
-                    return Container(
+                    return ImageUtils.buildCarouselImage(
+                      imageUrl: imageUrl,
+                      productName: productName,
                       width: MediaQuery.of(context).size.width,
-                      color: Colors.white,
-                      child: Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: AppColors.background,
-                            child: Icon(
-                              Icons.image_not_supported,
-                              size: 64,
-                              color: AppColors.textHint,
-                            ),
-                          );
-                        },
-                      ),
+                      height: 300,
                     );
                   },
                 );
@@ -802,21 +791,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 topLeft: Radius.circular(AppSizes.radiusMedium),
                 topRight: Radius.circular(AppSizes.radiusMedium),
               ),
-              child: Image.network(
-                product['image_url'] ?? 'https://via.placeholder.com/140x100',
+              child: ImageUtils.buildImage(
+                imageUrl: product['image_url'],
+                productName: product['name'] ?? 'Produk',
                 height: 100,
                 width: 140,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 100,
-                    color: AppColors.background,
-                    child: Icon(
-                      Icons.image_not_supported,
-                      color: AppColors.textHint,
-                    ),
-                  );
-                },
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppSizes.radiusMedium),
+                  topRight: Radius.circular(AppSizes.radiusMedium),
+                ),
               ),
             ),
             Padding(

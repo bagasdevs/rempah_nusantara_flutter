@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/config/app_theme.dart';
+import 'package:myapp/utils/image_utils.dart';
 
 class SearchScreen extends StatefulWidget {
   final String? initialQuery;
@@ -126,7 +127,7 @@ class _SearchScreenState extends State<SearchScreen> {
         'name': 'Jahe Merah Premium',
         'price': 25000.0,
         'unit': 'kg',
-        'image': 'https://via.placeholder.com/150',
+        'image': '',
         'rating': 4.8,
         'seller': 'Tani Jaya',
         'location': 'Bogor',
@@ -137,7 +138,7 @@ class _SearchScreenState extends State<SearchScreen> {
         'name': 'Kunyit Organik',
         'price': 18000.0,
         'unit': 'kg',
-        'image': 'https://via.placeholder.com/150',
+        'image': '',
         'rating': 4.7,
         'seller': 'Berkah Tani',
         'location': 'Bandung',
@@ -149,7 +150,7 @@ class _SearchScreenState extends State<SearchScreen> {
         'name': 'Lengkuas Segar',
         'price': 22000.0,
         'unit': 'kg',
-        'image': 'https://via.placeholder.com/150',
+        'image': '',
         'rating': 4.6,
         'seller': 'Rempah Nusantara',
         'location': 'Jakarta',
@@ -469,17 +470,13 @@ class _SearchScreenState extends State<SearchScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
-                child: Image.network(
-                  product['image'],
+                child: ImageUtils.buildImage(
+                  imageUrl: product['image'],
+                  productName: product['name'],
                   width: 80,
                   height: 80,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    width: 80,
-                    height: 80,
-                    color: AppColors.background,
-                    child: const Icon(Icons.image_not_supported),
-                  ),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
                 ),
               ),
               const SizedBox(width: AppSizes.spacingMedium),

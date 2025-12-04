@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/config/app_theme.dart';
+import 'package:myapp/utils/image_utils.dart';
 
 class ProductCard extends StatelessWidget {
   final String imageUrl;
@@ -57,27 +58,10 @@ class ProductCard extends StatelessWidget {
                     topLeft: Radius.circular(AppSizes.radiusLG),
                     topRight: Radius.circular(AppSizes.radiusLG),
                   ),
-                  child: Container(
+                  child: ImageUtils.buildProductCardImage(
+                    imageUrl: imageUrl,
+                    productName: name,
                     height: 140,
-                    width: double.infinity,
-                    color: AppColors.background,
-                    child: imageUrl.isNotEmpty
-                        ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.image_not_supported,
-                                size: 50,
-                                color: AppColors.iconGrey,
-                              );
-                            },
-                          )
-                        : const Icon(
-                            Icons.local_florist,
-                            size: 50,
-                            color: AppColors.iconGrey,
-                          ),
                   ),
                 ),
 
@@ -156,12 +140,12 @@ class ProductCard extends StatelessWidget {
             ),
 
             // Content Section
-            Expanded(
+            Flexible(
               child: Padding(
                 padding: const EdgeInsets.all(AppSizes.paddingMD),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // Product Name
                     Text(
@@ -171,48 +155,56 @@ class ProductCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    const SizedBox(height: AppSizes.paddingXS),
+                    const SizedBox(height: 4),
 
                     // Seller Name
-                    if (seller != null)
+                    if (seller != null) ...[
                       Text(
                         seller!,
                         style: AppTextStyles.caption,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-
-                    const Spacer(),
+                      const SizedBox(height: 4),
+                    ],
 
                     // Rating and Price
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         // Rating
                         if (rating != null)
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
                                 Icons.star,
-                                size: 16,
+                                size: 14,
                                 color: AppColors.warning,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 2),
                               Text(
                                 rating!,
                                 style: AppTextStyles.caption.copyWith(
                                   fontWeight: FontWeight.w600,
+                                  fontSize: 11,
                                 ),
                               ),
                             ],
                           ),
 
                         // Price
-                        Text(
-                          price,
-                          style: AppTextStyles.subtitle1.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
+                        Flexible(
+                          child: Text(
+                            price,
+                            style: AppTextStyles.subtitle1.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
