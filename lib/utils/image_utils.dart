@@ -146,8 +146,6 @@ class ImageUtils {
       width: width,
       height: height,
       fit: fit,
-      cacheWidth: width?.toInt(),
-      cacheHeight: height?.toInt(),
       errorBuilder: (context, error, stackTrace) {
         // Try to load default asset on network error
         final defaultAsset = getDefaultAsset();

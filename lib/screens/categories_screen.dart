@@ -63,32 +63,33 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   IconData _getCategoryIcon(String categoryName) {
     final name = categoryName.toLowerCase();
-    if (name.contains('rempah') || name.contains('spice')) {
-      return Icons.local_florist;
-    } else if (name.contains('bumbu') || name.contains('seasoning')) {
+    // Kategori Rempah-Rempah
+    if (name.contains('bumbu racikan') || name.contains('racikan')) {
       return Icons.restaurant;
-    } else if (name.contains('sayur') || name.contains('vegetable')) {
+    } else if (name.contains('herbal') || name.contains('obat')) {
+      return Icons.local_pharmacy;
+    } else if (name.contains('rempah bubuk') || name.contains('bubuk')) {
+      return Icons.grain;
+    } else if (name.contains('rempah utuh') || name.contains('utuh')) {
+      return Icons.spa;
+    } else if (name.contains('rempah') || name.contains('spice')) {
+      return Icons.local_florist;
+    } else if (name.contains('jahe') || name.contains('ginger')) {
       return Icons.eco;
-    } else if (name.contains('buah') || name.contains('fruit')) {
-      return Icons.apple;
-    } else if (name.contains('daging') || name.contains('meat')) {
-      return Icons.lunch_dining;
-    } else if (name.contains('ikan') || name.contains('fish')) {
-      return Icons.set_meal;
-    } else if (name.contains('minuman') || name.contains('drink')) {
-      return Icons.local_cafe;
-    } else if (name.contains('kue') || name.contains('cake')) {
-      return Icons.cake;
-    } else if (name.contains('breakfast')) {
-      return Icons.breakfast_dining;
-    } else if (name.contains('lunch')) {
-      return Icons.lunch_dining;
-    } else if (name.contains('dinner')) {
-      return Icons.dinner_dining;
-    } else if (name.contains('snack')) {
-      return Icons.fastfood;
+    } else if (name.contains('kunyit') || name.contains('turmeric')) {
+      return Icons.local_florist;
+    } else if (name.contains('kayu manis') || name.contains('cinnamon')) {
+      return Icons.park;
+    } else if (name.contains('cengkeh') || name.contains('clove')) {
+      return Icons.eco_outlined;
+    } else if (name.contains('pala') || name.contains('nutmeg')) {
+      return Icons.nature;
+    } else if (name.contains('merica') ||
+        name.contains('lada') ||
+        name.contains('pepper')) {
+      return Icons.circle;
     }
-    return Icons.category;
+    return Icons.local_florist;
   }
 
   Color _getCategoryColor(int index) {
@@ -264,7 +265,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           crossAxisCount: 2,
                           crossAxisSpacing: AppSizes.paddingMD,
                           mainAxisSpacing: AppSizes.paddingMD,
-                          childAspectRatio: 1.0,
+                          childAspectRatio: 1.1,
                         ),
                     itemCount: filteredCategories.length,
                     itemBuilder: (context, index) {

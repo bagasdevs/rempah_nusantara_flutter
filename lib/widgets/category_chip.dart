@@ -124,45 +124,52 @@ class CategoryCard extends StatelessWidget {
               ),
 
             // Content
-            Padding(
-              padding: const EdgeInsets.all(AppSizes.paddingMD),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Icon
-                  Container(
-                    padding: const EdgeInsets.all(AppSizes.paddingMD),
-                    decoration: BoxDecoration(
-                      color: (color ?? AppColors.primary).withOpacity(0.2),
-                      shape: BoxShape.circle,
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.paddingMD),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Icon
+                    Container(
+                      padding: const EdgeInsets.all(AppSizes.paddingMD),
+                      decoration: BoxDecoration(
+                        color: (color ?? AppColors.primary).withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 32,
+                        color: color ?? AppColors.primary,
+                      ),
                     ),
-                    child: Icon(
-                      icon,
-                      size: AppSizes.iconSizeLG,
-                      color: color ?? AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.paddingSM),
+                    const SizedBox(height: 8),
 
-                  // Title
-                  Text(
-                    title,
-                    style: AppTextStyles.subtitle1,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  // Item Count
-                  if (itemCount != null) ...[
-                    const SizedBox(height: AppSizes.paddingXS),
+                    // Title
                     Text(
-                      '$itemCount item',
-                      style: AppTextStyles.caption,
+                      title,
+                      style: AppTextStyles.subtitle1.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                       textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
+
+                    // Item Count
+                    if (itemCount != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '$itemCount item',
+                        style: AppTextStyles.caption.copyWith(fontSize: 11),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ],

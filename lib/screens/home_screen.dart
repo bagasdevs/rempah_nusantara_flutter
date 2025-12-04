@@ -233,33 +233,41 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Stack(
                   children: [
                     // Background Image with overlay
-                    if (imageUrl != null && imageUrl.isNotEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusLG),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusLG),
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width,
+                        height: 180,
                         child: Stack(
+                          fit: StackFit.expand,
                           children: [
-                            ImageUtils.buildImage(
-                              imageUrl: imageUrl,
-                              productName: product['name'] ?? 'Produk',
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
+                            // Background Image
+                            Positioned.fill(
+                              child: ImageUtils.buildImage(
+                                imageUrl: imageUrl ?? '',
+                                productName: product['name'] ?? 'Produk',
+                                fit: BoxFit.cover,
+                              ),
                             ),
-                            Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.transparent,
-                                    Colors.black.withOpacity(0.7),
-                                  ],
+                            // Gradient Overlay
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withOpacity(0.7),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
+                    ),
 
                     // Content
                     Positioned(
