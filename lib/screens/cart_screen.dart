@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/config/app_theme.dart';
 import 'package:myapp/widgets/bottom_nav_bar.dart';
 import 'package:myapp/services/api_service.dart';
+import 'package:myapp/utils/image_utils.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -436,16 +437,13 @@ class _CartScreenState extends State<CartScreen> {
                 // Product Image
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: (imageUrl != null && imageUrl.isNotEmpty)
-                      ? Image.network(
-                          imageUrl,
-                          width: 90,
-                          height: 90,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _buildImagePlaceholder(),
-                        )
-                      : _buildImagePlaceholder(),
+                  child: ImageUtils.buildImage(
+                    imageUrl: imageUrl,
+                    productName: item['product_name'] ?? 'Produk',
+                    width: 90,
+                    height: 90,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(width: 12),
 
@@ -528,18 +526,6 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildImagePlaceholder() {
-    return Container(
-      width: 90,
-      height: 90,
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Icon(Icons.image_not_supported, color: AppColors.iconGrey),
     );
   }
 

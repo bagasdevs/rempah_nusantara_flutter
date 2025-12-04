@@ -491,7 +491,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
                 SizedBox(height: AppSizes.paddingXS),
                 Text(
-                  'Jakarta, Indonesia',
+                  'Magelang, Indonesia',
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.textHint,
                   ),

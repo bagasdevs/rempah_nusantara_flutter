@@ -4,6 +4,7 @@ import 'package:myapp/config/app_theme.dart';
 import 'package:myapp/widgets/custom_app_bar.dart';
 import 'package:myapp/widgets/product_card.dart';
 import 'package:myapp/services/api_service.dart';
+import 'package:myapp/utils/image_utils.dart';
 
 class ProductsScreen extends StatefulWidget {
   final int? categoryId;
@@ -445,7 +446,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         crossAxisCount: 2,
         crossAxisSpacing: AppSizes.paddingMD,
         mainAxisSpacing: AppSizes.paddingMD,
-        childAspectRatio: 0.68,
+        childAspectRatio: 0.75,
       ),
       itemCount: products.length,
       itemBuilder: (context, index) {
@@ -514,23 +515,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 width: 80,
                 height: 80,
                 color: AppColors.background,
-                child:
-                    product['image_url'] != null &&
-                        (product['image_url'] as String).isNotEmpty
-                    ? Image.network(
-                        product['image_url'],
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.image_not_supported,
-                            color: AppColors.iconGrey,
-                          );
-                        },
-                      )
-                    : const Icon(
-                        Icons.local_florist,
-                        color: AppColors.iconGrey,
-                      ),
+                child: ImageUtils.buildImage(
+                  imageUrl: product['image_url'],
+                  productName: product['name'] ?? 'Produk',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             const SizedBox(width: AppSizes.paddingMD),

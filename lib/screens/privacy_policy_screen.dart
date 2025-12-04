@@ -131,7 +131,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   'Jika Anda memiliki pertanyaan tentang Kebijakan Privasi ini atau praktik privasi kami, silakan hubungi:\n\n'
                   '📧 Email: privacy@rempahnusantara.com\n'
                   '📱 WhatsApp: +62 812-3456-7890\n'
-                  '📍 Alamat: Jl. Rempah Nusantara No. 123, Jakarta, Indonesia\n\n'
+                  '📍 Alamat: Jl. Rempah Nusantara No. 123, Magelang, Indonesia\n\n'
                   'Kami akan merespons pertanyaan Anda dalam waktu 7 hari kerja.',
             ),
             const SizedBox(height: 24),

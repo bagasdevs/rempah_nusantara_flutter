@@ -153,7 +153,7 @@ class _SearchScreenState extends State<SearchScreen> {
         'image': '',
         'rating': 4.6,
         'seller': 'Rempah Nusantara',
-        'location': 'Jakarta',
+        'location': 'Magelang',
       },
     ];
 

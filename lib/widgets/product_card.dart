@@ -32,6 +32,11 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Filter placeholder URLs - force empty string to use local assets
+    final filteredImageUrl = ImageUtils.isPlaceholderUrl(imageUrl)
+        ? ''
+        : imageUrl;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppSizes.radiusLG),
@@ -59,7 +64,7 @@ class ProductCard extends StatelessWidget {
                     topRight: Radius.circular(AppSizes.radiusLG),
                   ),
                   child: ImageUtils.buildProductCardImage(
-                    imageUrl: imageUrl,
+                    imageUrl: filteredImageUrl,
                     productName: name,
                     height: 140,
                   ),
@@ -142,7 +147,10 @@ class ProductCard extends StatelessWidget {
             // Content Section
             Flexible(
               child: Padding(
-                padding: const EdgeInsets.all(AppSizes.paddingMD),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.paddingMD,
+                  vertical: AppSizes.paddingMD - 2,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -150,22 +158,25 @@ class ProductCard extends StatelessWidget {
                     // Product Name
                     Text(
                       name,
-                      style: AppTextStyles.subtitle1,
+                      style: AppTextStyles.subtitle1.copyWith(
+                        fontSize: 12,
+                        height: 1.2,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
 
                     // Seller Name
                     if (seller != null) ...[
                       Text(
                         seller!,
-                        style: AppTextStyles.caption,
+                        style: AppTextStyles.caption.copyWith(fontSize: 10),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                     ],
 
                     // Rating and Price

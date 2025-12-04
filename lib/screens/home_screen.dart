@@ -8,6 +8,7 @@ import 'package:myapp/widgets/category_chip.dart';
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:myapp/services/api_service.dart';
+import 'package:myapp/utils/image_utils.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -237,14 +238,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(AppSizes.radiusLG),
                         child: Stack(
                           children: [
-                            Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
+                            ImageUtils.buildImage(
+                              imageUrl: imageUrl,
+                              productName: product['name'] ?? 'Produk',
                               width: double.infinity,
                               height: double.infinity,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(color: AppColors.primary);
-                              },
+                              fit: BoxFit.cover,
                             ),
                             Container(
                               decoration: BoxDecoration(
@@ -532,7 +531,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: AppSizes.paddingMD,
                 mainAxisSpacing: AppSizes.paddingMD,
-                childAspectRatio: 0.68,
+                childAspectRatio: 0.75,
               ),
               itemBuilder: (context, index) {
                 final product = products[index];

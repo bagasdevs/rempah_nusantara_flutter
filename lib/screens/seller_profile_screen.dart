@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/services/api_service.dart';
+import 'package:myapp/utils/image_utils.dart';
 
 class SellerProfileScreen extends StatefulWidget {
   final String sellerId;
@@ -253,16 +254,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: (imageUrl != null && imageUrl.isNotEmpty)
-                  ? Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    )
-                  : Container(
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.image),
-                    ),
+              child: ImageUtils.buildImage(
+                imageUrl: imageUrl,
+                productName: product['name'] ?? 'Produk',
+                fit: BoxFit.cover,
+                width: double.infinity,
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),

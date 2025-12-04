@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/services/api_service.dart';
+import 'package:myapp/utils/image_utils.dart';
 
 class ManageProductsScreen extends StatefulWidget {
   const ManageProductsScreen({super.key});
@@ -208,19 +209,13 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: (imageUrl != null && imageUrl.isNotEmpty)
-                  ? Image.network(
-                      imageUrl,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      width: 80,
-                      height: 80,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.image, color: Colors.grey),
-                    ),
+              child: ImageUtils.buildImage(
+                imageUrl: imageUrl,
+                productName: product['name'] ?? 'Produk',
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
