@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:myapp/app_router.dart';
 import 'package:myapp/services/api_service.dart';
 import 'package:myapp/services/payment_service.dart';
@@ -8,14 +9,38 @@ import 'package:myapp/utils/image_utils.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize API Service
-  await ApiService.init();
+  // Set up error handlers to prevent app from crashing silently
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter Error: ${details.exception}');
+    debugPrint('Stack trace: ${details.stack}');
+  };
 
-  // Initialize Payment Service (Midtrans)
-  await PaymentService.init(
-    clientKey: 'SB-Mid-client-Y7EOICoq4eYEVyxz', // Sandbox client key
-    isProduction: false,
-  );
+  // Handle errors outside of Flutter framework
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Platform Error: $error');
+    debugPrint('Stack trace: $stack');
+    return true;
+  };
+
+  try {
+    // Initialize API Service with timeout
+    await ApiService.init().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('API Service init timeout - continuing anyway');
+      },
+    );
+
+    // Initialize Payment Service configuration (SDK will be initialized when needed)
+    await PaymentService.init(
+      clientKey: 'SB-Mid-client-Y7EOICoq4eYEVyxz', // Sandbox client key
+      isProduction: false,
+    );
+  } catch (e) {
+    debugPrint('Error during initialization: $e');
+    // Continue app launch even if initialization fails
+  }
 
   runApp(const MyApp());
 }
@@ -37,10 +62,25 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _initializeApp() async {
-    // Preload images for faster loading
-    await Future.delayed(const Duration(milliseconds: 100));
-    if (mounted) {
-      await ImageUtils.preloadImages(context);
+    try {
+      // Preload images for faster loading with timeout
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (mounted) {
+        await ImageUtils.preloadImages(context).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('Image preloading timeout - continuing anyway');
+          },
+        );
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error initializing app: $e');
+      // Continue to main app even if preloading fails
       if (mounted) {
         setState(() {
           _isLoading = false;

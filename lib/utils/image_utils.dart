@@ -247,16 +247,26 @@ class ImageUtils {
     ];
 
     try {
-      await Future.wait(
-        assets.map((asset) async {
+      // Preload each image individually with error handling
+      for (final asset in assets) {
+        try {
           final imageProvider = AssetImage(asset);
           _imageCache[asset] = imageProvider;
-          await precacheImage(imageProvider, context);
-        }),
-      );
+          await precacheImage(imageProvider, context).timeout(
+            const Duration(seconds: 3),
+            onTimeout: () {
+              debugPrint('Timeout preloading: $asset');
+            },
+          );
+        } catch (e) {
+          debugPrint('Error preloading $asset: $e');
+          // Continue with other images even if one fails
+        }
+      }
       _isPreloaded = true;
     } catch (e) {
       debugPrint('Error preloading images: $e');
+      _isPreloaded = true; // Mark as preloaded anyway to not block app
     }
   }
 

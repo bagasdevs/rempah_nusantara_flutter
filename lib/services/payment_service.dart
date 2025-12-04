@@ -8,39 +8,55 @@ import 'package:url_launcher/url_launcher.dart';
 class PaymentService {
   static MidtransSDK? _midtransSDK;
   static bool _isInitialized = false;
+  static String? _clientKey;
+  static bool? _isProduction;
 
-  /// Initialize Midtrans SDK
+  /// Initialize Midtrans SDK configuration (but don't initialize SDK yet)
   static Future<void> init({
     required String clientKey,
     required bool isProduction,
   }) async {
-    if (_isInitialized) return;
+    _clientKey = clientKey;
+    _isProduction = isProduction;
+    _isInitialized = true;
+    print('✅ [PaymentService] Configuration saved (production: $isProduction)');
+  }
+
+  /// Lazy initialize Midtrans SDK when first needed
+  static Future<void> _ensureInitialized() async {
+    if (_midtransSDK != null) return;
+
+    if (_clientKey == null || _isProduction == null) {
+      throw Exception('PaymentService not configured. Call init() first.');
+    }
 
     // Skip SDK initialization on web
     if (kIsWeb) {
-      _isInitialized = true;
       print(
         '✅ [PaymentService] Web platform detected - using redirect URL method',
       );
       return;
     }
 
-    _midtransSDK = await MidtransSDK.init(
-      config: MidtransConfig(
-        clientKey: clientKey,
-        merchantBaseUrl: '', // Not needed for Snap
-        colorTheme: ColorTheme(
-          colorPrimary: Color(0xFF2E7D32),
-          colorPrimaryDark: Color(0xFF1B5E20),
-          colorSecondary: Color(0xFF66BB6A),
+    try {
+      _midtransSDK = await MidtransSDK.init(
+        config: MidtransConfig(
+          clientKey: _clientKey!,
+          merchantBaseUrl: '', // Not needed for Snap
+          colorTheme: ColorTheme(
+            colorPrimary: Color(0xFF2E7D32),
+            colorPrimaryDark: Color(0xFF1B5E20),
+            colorSecondary: Color(0xFF66BB6A),
+          ),
         ),
-      ),
-    );
-
-    _isInitialized = true;
-    print(
-      '✅ [PaymentService] Midtrans SDK initialized (production: $isProduction)',
-    );
+      );
+      print(
+        '✅ [PaymentService] Midtrans SDK initialized (production: $_isProduction)',
+      );
+    } catch (e) {
+      print('⚠️ [PaymentService] Failed to initialize Midtrans SDK: $e');
+      print('⚠️ [PaymentService] Will fall back to redirect URL method');
+    }
   }
 
   /// Create payment and get Snap token
@@ -111,9 +127,29 @@ class PaymentService {
         };
       }
 
-      // For mobile, use SDK
+      // For mobile, ensure SDK is initialized first
+      await _ensureInitialized();
+
+      // If SDK still not available (initialization failed), use redirect URL as fallback
       if (_midtransSDK == null) {
-        throw Exception('Midtrans SDK not initialized. Call init() first.');
+        if (redirectUrl == null || redirectUrl.isEmpty) {
+          throw Exception(
+            'Midtrans SDK not available and no redirect URL provided',
+          );
+        }
+
+        print('⚠️ [PaymentService] Using redirect URL fallback');
+        print('🔗 [PaymentService] URL: $redirectUrl');
+
+        final uri = Uri.parse(redirectUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          print('✅ [PaymentService] Payment page opened via redirect');
+
+          return {'status': 'pending', 'message': 'Payment page opened'};
+        } else {
+          throw Exception('Could not launch payment URL');
+        }
       }
 
       print('💳 [PaymentService] Starting payment with Snap token');
