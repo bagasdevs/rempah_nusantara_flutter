@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/config/app_theme.dart';
-import 'package:myapp/widgets/custom_app_bar.dart';
-import 'package:myapp/widgets/product_card.dart';
-import 'package:myapp/services/api_service.dart';
-import 'package:myapp/utils/image_utils.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/widgets/custom_app_bar.dart';
+import 'package:rempah_nusantara/widgets/product_card.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
+import 'package:rempah_nusantara/utils/image_utils.dart';
 
 class ProductsScreen extends StatefulWidget {
   final int? categoryId;

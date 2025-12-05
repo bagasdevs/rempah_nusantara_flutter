@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/config/app_theme.dart';
-import 'package:myapp/services/payment_service.dart';
-import 'package:myapp/services/api_service.dart';
-import 'package:myapp/widgets/bottom_nav_bar.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/services/payment_service.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
+import 'package:rempah_nusantara/widgets/bottom_nav_bar.dart';
 
 class OrderStatusScreen extends StatefulWidget {
   final int orderId;
@@ -17,12 +17,15 @@ class OrderStatusScreen extends StatefulWidget {
 
 class _OrderStatusScreenState extends State<OrderStatusScreen> {
   Timer? _pollingTimer;
+  Timer? _redirectTimer;
   Map<String, dynamic>? _orderData;
   bool _isLoading = true;
   String _paymentStatus = 'pending';
   String _orderStatus = 'pending_payment';
   int _pollCount = 0;
   final int _maxPolls = 30;
+  int _redirectCountdown = 3;
+  bool _isRedirecting = false;
 
   @override
   void initState() {
@@ -34,6 +37,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _redirectTimer?.cancel();
     super.dispose();
   }
 
@@ -72,6 +76,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         // Show notification when payment is complete
         if (_paymentStatus == 'paid' || _paymentStatus == 'settlement') {
           _showSuccessNotification();
+          _startRedirectCountdown();
         } else if (_paymentStatus == 'failed' ||
             _paymentStatus == 'expired' ||
             _paymentStatus == 'cancelled') {
@@ -88,7 +93,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           children: [
             Icon(Icons.check_circle, color: Colors.white),
             SizedBox(width: 8),
-            Text('Pembayaran berhasil!'),
+            Expanded(
+              child: Text(
+                'Pembayaran berhasil! Mengalihkan ke halaman pesanan...',
+              ),
+            ),
           ],
         ),
         backgroundColor: Colors.green,
@@ -111,6 +120,41 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         duration: Duration(seconds: 3),
       ),
     );
+  }
+
+  void _cancelRedirect() {
+    _redirectTimer?.cancel();
+    setState(() {
+      _isRedirecting = false;
+      _redirectCountdown = 3;
+    });
+  }
+
+  void _startRedirectCountdown() {
+    if (_isRedirecting) return; // Prevent multiple timers
+
+    setState(() {
+      _isRedirecting = true;
+      _redirectCountdown = 3;
+    });
+
+    _redirectTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() {
+        _redirectCountdown--;
+      });
+
+      if (_redirectCountdown <= 0) {
+        timer.cancel();
+        if (mounted) {
+          context.go('/orders');
+        }
+      }
+    });
   }
 
   Future<void> _manualRefresh() async {
@@ -268,6 +312,60 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 color: AppColors.textSecondary,
               ),
             ),
+            // Countdown timer when redirecting
+            if (_isRedirecting) ...[
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(
+                              Colors.green.shade700,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Mengalihkan ke Pesanan dalam $_redirectCountdown detik...',
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: _cancelRedirect,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.green.shade700,
+                          side: BorderSide(color: Colors.green.shade700),
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        child: Text('Tetap di Halaman Ini'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (_paymentStatus == 'pending') ...[
               SizedBox(height: 16),
               LinearProgressIndicator(

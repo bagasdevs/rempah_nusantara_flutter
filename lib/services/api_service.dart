@@ -539,6 +539,7 @@ class ApiService {
     Map<String, dynamic>? customer,
     Map<String, dynamic>? shippingAddress,
     double? shippingCost,
+    String? finishRedirectUrl,
   }) async {
     final result = await post('/api/payments/create-transaction', {
       'order_id': orderId,
@@ -547,6 +548,7 @@ class ApiService {
       if (customer != null) 'customer': customer,
       if (shippingAddress != null) 'shipping_address': shippingAddress,
       if (shippingCost != null) 'shipping_cost': shippingCost,
+      if (finishRedirectUrl != null) 'finish_redirect_url': finishRedirectUrl,
     });
 
     if (result['success'] == true) {

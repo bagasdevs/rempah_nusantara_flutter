@@ -67,6 +67,7 @@ class PaymentService {
     Map<String, dynamic>? customer,
     Map<String, dynamic>? shippingAddress,
     double? shippingCost,
+    String? finishRedirectUrl,
   }) async {
     try {
       print('💳 [PaymentService] Creating payment for order #$orderId');
@@ -82,6 +83,7 @@ class PaymentService {
         customer: customer,
         shippingAddress: shippingAddress,
         shippingCost: shippingCost,
+        finishRedirectUrl: finishRedirectUrl,
       );
 
       print('✅ [PaymentService] Snap token received');
@@ -238,6 +240,11 @@ class PaymentService {
       print('🚀 [PaymentService] Starting payment process for order #$orderId');
 
       // Step 1: Create payment transaction and get Snap token
+      // Use deep link for web to redirect back to app after payment
+      final finishRedirectUrl = kIsWeb
+          ? '${Uri.base.origin}/#/order-status/$orderId'
+          : 'com.rempahnusantara://payment/callback?order_id=$orderId';
+
       final paymentData = await createPayment(
         orderId: orderId,
         totalAmount: totalAmount,
@@ -245,6 +252,7 @@ class PaymentService {
         customer: customer,
         shippingAddress: shippingAddress,
         shippingCost: shippingCost,
+        finishRedirectUrl: finishRedirectUrl,
       );
 
       final snapToken = paymentData['snap_token'];

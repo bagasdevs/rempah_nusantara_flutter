@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/config/app_theme.dart';
-import 'package:myapp/services/api_service.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
 
 class BuyerLoginScreen extends StatefulWidget {
   const BuyerLoginScreen({super.key});
@@ -175,7 +175,7 @@ class _BuyerLoginScreenState extends State<BuyerLoginScreen> {
             child: Padding(
               padding: const EdgeInsets.all(8),
               child: Image.asset(
-                'assets/images/Logo_Rempah_Nusantara.png',
+                'assets/images/app_icon.png',
                 fit: BoxFit.contain,
               ),
             ),

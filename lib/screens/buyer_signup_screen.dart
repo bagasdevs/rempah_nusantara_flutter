@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
-import 'package:myapp/services/api_service.dart';
-import 'package:myapp/config/app_theme.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
 
 class BuyerSignupScreen extends StatefulWidget {
   const BuyerSignupScreen({super.key});

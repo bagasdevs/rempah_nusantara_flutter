@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/config/app_theme.dart';
-import 'package:myapp/services/api_service.dart';
-import 'package:myapp/widgets/bottom_nav_bar.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
+import 'package:rempah_nusantara/widgets/bottom_nav_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

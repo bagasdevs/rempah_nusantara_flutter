@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/config/app_theme.dart';
-import 'package:myapp/widgets/bottom_nav_bar.dart';
-import 'package:myapp/services/api_service.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/widgets/bottom_nav_bar.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -16,7 +16,14 @@ class _OrdersScreenState extends State<OrdersScreen>
   late TabController _tabController;
   bool _isLoading = true;
 
-  final List<String> _tabs = ['Semua', 'Dikemas', 'Dikirim', 'Selesai'];
+  final List<String> _tabs = [
+    'Semua',
+    'Pending',
+    'Dibayar',
+    'Dikemas',
+    'Dikirim',
+    'Selesai',
+  ];
 
   List<Map<String, dynamic>> _orders = [];
 
@@ -78,13 +85,51 @@ class _OrdersScreenState extends State<OrdersScreen>
       final paymentStatus =
           order['payment_status']?.toString().toLowerCase() ?? '';
 
-      if (currentTab == 'Dikemas') {
-        return orderStatus == 'processing' ||
-            (orderStatus == 'pending_payment' && paymentStatus == 'paid');
+      print(
+        '🔍 [ORDERS] Order ${order['order_number']}: status=$orderStatus, payment=$paymentStatus',
+      );
+      print('  → Current tab: $currentTab');
+
+      if (currentTab == 'Pending') {
+        // Pending = belum bayar (pending payment)
+        final isPending =
+            (paymentStatus == 'pending' || paymentStatus == '') &&
+            orderStatus == 'pending_payment';
+        print(
+          '  → Pending check: $isPending (payment=$paymentStatus, order=$orderStatus)',
+        );
+        return isPending;
+      } else if (currentTab == 'Dibayar') {
+        // Dibayar = sudah bayar tapi belum diproses
+        final isDibayar =
+            (paymentStatus == 'paid' || paymentStatus == 'settlement') &&
+            orderStatus == 'pending_payment';
+        print(
+          '  → Dibayar check: $isDibayar (payment=$paymentStatus, order=$orderStatus)',
+        );
+        if (isDibayar) {
+          print('  ✅ MATCH! This order should appear in Dibayar tab');
+        }
+        return isDibayar;
+      } else if (currentTab == 'Dikemas') {
+        // Dikemas = processing status (sedang diproses)
+        final isDikemas = orderStatus == 'processing';
+        print('  → Dikemas check: $isDikemas (order=$orderStatus)');
+        if (isDikemas) {
+          print('  ✅ MATCH! This order should appear in Dikemas tab');
+        }
+        return isDikemas;
       } else if (currentTab == 'Dikirim') {
-        return orderStatus == 'shipped';
+        // Dikirim = shipped status
+        final isDikirim = orderStatus == 'shipped';
+        print('  → Dikirim check: $isDikirim');
+        return isDikirim;
       } else if (currentTab == 'Selesai') {
-        return orderStatus == 'delivered' || orderStatus == 'completed';
+        // Selesai = delivered or completed status
+        final isSelesai =
+            orderStatus == 'delivered' || orderStatus == 'completed';
+        print('  → Selesai check: $isSelesai');
+        return isSelesai;
       }
       return false;
     }).toList();
@@ -92,15 +137,23 @@ class _OrdersScreenState extends State<OrdersScreen>
 
   Color _getStatusColor(String status) {
     final normalizedStatus = status.toLowerCase();
-    if (normalizedStatus.contains('processing') ||
-        normalizedStatus.contains('paid')) {
+    if (normalizedStatus.contains('pending') || normalizedStatus == 'pending') {
+      return Colors.grey;
+    } else if (normalizedStatus.contains('dibayar') ||
+        normalizedStatus == 'dibayar') {
+      return Colors.green;
+    } else if (normalizedStatus.contains('dikemas') ||
+        normalizedStatus.contains('processing')) {
       return Colors.orange;
-    } else if (normalizedStatus.contains('shipped')) {
+    } else if (normalizedStatus.contains('dikirim') ||
+        normalizedStatus.contains('shipped')) {
       return Colors.blue;
-    } else if (normalizedStatus.contains('delivered') ||
+    } else if (normalizedStatus.contains('selesai') ||
+        normalizedStatus.contains('delivered') ||
         normalizedStatus.contains('completed')) {
       return AppColors.primary;
-    } else if (normalizedStatus.contains('cancelled')) {
+    } else if (normalizedStatus.contains('dibatalkan') ||
+        normalizedStatus.contains('cancelled')) {
       return Colors.red;
     } else {
       return Colors.grey;
@@ -109,15 +162,23 @@ class _OrdersScreenState extends State<OrdersScreen>
 
   IconData _getStatusIcon(String status) {
     final normalizedStatus = status.toLowerCase();
-    if (normalizedStatus.contains('processing') ||
-        normalizedStatus.contains('paid')) {
+    if (normalizedStatus.contains('pending') || normalizedStatus == 'pending') {
+      return Icons.schedule;
+    } else if (normalizedStatus.contains('dibayar') ||
+        normalizedStatus == 'dibayar') {
+      return Icons.payment;
+    } else if (normalizedStatus.contains('dikemas') ||
+        normalizedStatus.contains('processing')) {
       return Icons.inventory_2_outlined;
-    } else if (normalizedStatus.contains('shipped')) {
+    } else if (normalizedStatus.contains('dikirim') ||
+        normalizedStatus.contains('shipped')) {
       return Icons.local_shipping_outlined;
-    } else if (normalizedStatus.contains('delivered') ||
+    } else if (normalizedStatus.contains('selesai') ||
+        normalizedStatus.contains('delivered') ||
         normalizedStatus.contains('completed')) {
       return Icons.check_circle_outline;
-    } else if (normalizedStatus.contains('cancelled')) {
+    } else if (normalizedStatus.contains('dibatalkan') ||
+        normalizedStatus.contains('cancelled')) {
       return Icons.cancel_outlined;
     } else {
       return Icons.shopping_bag_outlined;
@@ -199,6 +260,15 @@ class _OrdersScreenState extends State<OrdersScreen>
   }
 
   Widget _buildOrderDetailSheet(Map<String, dynamic> order) {
+    // Normalize order data
+    final orderNumber = order['order_number'] ?? 'ORD-${order['id']}';
+    final orderDate = _formatDate(order['created_at'] ?? '');
+    final orderStatus = _formatStatus(order['status'] ?? 'pending_payment');
+    final paymentStatus = order['payment_status'] ?? '';
+    final totalPrice = _parsePrice(order['total_price']);
+    final shippingCost = _parsePrice(order['shipping_cost']);
+    final items = (order['items'] ?? []) as List;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
@@ -231,18 +301,20 @@ class _OrdersScreenState extends State<OrdersScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(order['id'], style: AppTextStyles.heading2),
-                            const SizedBox(height: 4),
-                            Text(
-                              order['date'],
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: Colors.grey[600],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(orderNumber, style: AppTextStyles.heading2),
+                              const SizedBox(height: 4),
+                              Text(
+                                orderDate,
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: Colors.grey[600],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -251,7 +323,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                           ),
                           decoration: BoxDecoration(
                             color: _getStatusColor(
-                              order['status'],
+                              orderStatus,
                             ).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
@@ -259,15 +331,15 @@ class _OrdersScreenState extends State<OrdersScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                _getStatusIcon(order['status']),
+                                _getStatusIcon(orderStatus),
                                 size: 16,
-                                color: _getStatusColor(order['status']),
+                                color: _getStatusColor(orderStatus),
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                order['status'],
+                                orderStatus,
                                 style: AppTextStyles.bodySmall.copyWith(
-                                  color: _getStatusColor(order['status']),
+                                  color: _getStatusColor(orderStatus),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -278,8 +350,39 @@ class _OrdersScreenState extends State<OrdersScreen>
                     ),
                     const SizedBox(height: 24),
 
+                    // Payment Status
+                    if (paymentStatus.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green[100]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.payment,
+                              color: Colors.green[700],
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Status Pembayaran: ${_formatStatus(paymentStatus)}',
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     // Tracking info
-                    if (order['trackingNumber'] != null) ...[
+                    if (order['tracking_number'] != null &&
+                        order['tracking_number'].toString().isNotEmpty) ...[
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -310,10 +413,12 @@ class _OrdersScreenState extends State<OrdersScreen>
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  order['trackingNumber'],
-                                  style: AppTextStyles.bodyLarge.copyWith(
-                                    fontWeight: FontWeight.bold,
+                                Expanded(
+                                  child: Text(
+                                    order['tracking_number'].toString(),
+                                    style: AppTextStyles.bodyLarge.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                                 TextButton(
@@ -322,25 +427,6 @@ class _OrdersScreenState extends State<OrdersScreen>
                                 ),
                               ],
                             ),
-                            if (order['estimatedDelivery'] != null) ...[
-                              const Divider(height: 16),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.event,
-                                    color: Colors.grey[600],
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Estimasi tiba: ${order['estimatedDelivery']}',
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: Colors.grey[700],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
                           ],
                         ),
                       ),
@@ -350,82 +436,142 @@ class _OrdersScreenState extends State<OrdersScreen>
                     // Order items
                     Text('Produk Pesanan', style: AppTextStyles.heading3),
                     const SizedBox(height: 12),
-                    ...List.generate(order['items'].length, (index) {
-                      final item = order['items'][index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
+                    if (items.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           border: Border.all(color: Colors.grey[200]!),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Row(
-                          children: [
-                            // Product image placeholder
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(Icons.image, color: Colors.grey[400]),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item['name'],
-                                    style: AppTextStyles.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${item['quantity']}x',
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              'Total: Rp ${_formatCurrency(order['total'])}',
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          'Tidak ada item',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: Colors.grey[600],
+                          ),
                         ),
-                      );
-                    }),
+                      )
+                    else
+                      ...List.generate(items.length, (index) {
+                        final item = items[index];
+                        final itemName =
+                            item['product_name'] ?? item['name'] ?? 'Produk';
+                        final itemQty = item['quantity'] ?? 1;
+                        final itemPrice = _parsePrice(item['price']);
+                        final itemTotal = itemPrice * itemQty;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey[200]!),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              // Product image placeholder
+                              Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.image,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      itemName,
+                                      style: AppTextStyles.bodyMedium.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${itemQty}x @ Rp ${_formatCurrency(itemPrice)}',
+                                      style: AppTextStyles.bodySmall.copyWith(
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Rp ${_formatCurrency(itemTotal)}',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     const SizedBox(height: 24),
 
-                    // Total
+                    // Price breakdown
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.05),
+                        color: Colors.grey[50],
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[200]!),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
                         children: [
-                          Text(
-                            'Total Pembayaran',
-                            style: AppTextStyles.bodyLarge.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Subtotal Produk',
+                                style: AppTextStyles.bodyMedium,
+                              ),
+                              Text(
+                                'Rp ${_formatCurrency(totalPrice - shippingCost)}',
+                                style: AppTextStyles.bodyMedium,
+                              ),
+                            ],
                           ),
-                          Text(
-                            'Rp ${order['total'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                            style: AppTextStyles.heading2.copyWith(
-                              color: AppColors.primary,
-                            ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Biaya Pengiriman',
+                                style: AppTextStyles.bodyMedium,
+                              ),
+                              Text(
+                                'Rp ${_formatCurrency(shippingCost)}',
+                                style: AppTextStyles.bodyMedium,
+                              ),
+                            ],
+                          ),
+                          Divider(height: 24, color: Colors.grey[300]),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total Pembayaran',
+                                style: AppTextStyles.bodyLarge.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Rp ${_formatCurrency(totalPrice)}',
+                                style: AppTextStyles.heading3.copyWith(
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -433,7 +579,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                     const SizedBox(height: 24),
 
                     // Action buttons
-                    if (order['status'] == 'Selesai') ...[
+                    if (orderStatus == 'Selesai') ...[
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
@@ -473,7 +619,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                           ),
                         ),
                       ),
-                    ] else if (order['status'] == 'Dikirim') ...[
+                    ] else if (orderStatus == 'Dikirim') ...[
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
@@ -550,26 +696,52 @@ class _OrdersScreenState extends State<OrdersScreen>
 
   String _formatStatus(String status) {
     switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Pending';
       case 'pending_payment':
         return 'Menunggu Pembayaran';
+      case 'paid':
+      case 'settlement':
+        return 'Dibayar';
       case 'processing':
         return 'Dikemas';
       case 'shipped':
         return 'Dikirim';
       case 'completed':
+      case 'delivered':
         return 'Selesai';
       case 'cancelled':
         return 'Dibatalkan';
+      case 'failed':
+        return 'Gagal';
+      case 'expired':
+        return 'Kadaluarsa';
       default:
         return status;
     }
+  }
+
+  String _getDisplayStatus(String orderStatus, String paymentStatus) {
+    // Jika belum bayar (pending payment)
+    if (paymentStatus == 'pending' && orderStatus == 'pending_payment') {
+      return 'Pending';
+    }
+    // Jika sudah dibayar tapi masih pending_payment, tampilkan "Dibayar"
+    if ((paymentStatus == 'paid' || paymentStatus == 'settlement') &&
+        orderStatus == 'pending_payment') {
+      return 'Dibayar';
+    }
+    // Selain itu, gunakan order status
+    return _formatStatus(orderStatus);
   }
 
   Widget _buildOrderCard(Map<String, dynamic> order) {
     // Normalize order data
     final orderNumber = order['order_number'] ?? 'ORD-${order['id']}';
     final orderDate = _formatDate(order['created_at'] ?? '');
-    final orderStatus = _formatStatus(order['status'] ?? 'pending_payment');
+    final rawOrderStatus = order['status'] ?? 'pending_payment';
+    final paymentStatus = order['payment_status'] ?? '';
+    final orderStatus = _getDisplayStatus(rawOrderStatus, paymentStatus);
     final totalPrice = _parsePrice(order['total_price']);
     final shippingCost = _parsePrice(order['shipping_cost']);
     final items = (order['items'] ?? []) as List;
@@ -807,17 +979,21 @@ class _OrdersScreenState extends State<OrdersScreen>
             color: Colors.white,
             child: TabBar(
               controller: _tabController,
-              isScrollable: true,
+              isScrollable: false,
               labelColor: AppColors.primary,
               unselectedLabelColor: Colors.grey[600],
               labelStyle: AppTextStyles.bodyMedium.copyWith(
                 fontWeight: FontWeight.w600,
+                fontSize: 11,
               ),
-              unselectedLabelStyle: AppTextStyles.bodyMedium,
+              unselectedLabelStyle: AppTextStyles.bodyMedium.copyWith(
+                fontSize: 11,
+              ),
               indicator: UnderlineTabIndicator(
                 borderSide: BorderSide(width: 3, color: AppColors.primary),
-                insets: const EdgeInsets.symmetric(horizontal: 16),
+                insets: const EdgeInsets.symmetric(horizontal: 4),
               ),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
               onTap: (_) => setState(() {}),
               tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
             ),
@@ -879,11 +1055,19 @@ class _OrdersScreenState extends State<OrdersScreen>
                     );
                   }
 
-                  return ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: filteredOrders
-                        .map((order) => _buildOrderCard(order))
-                        .toList(),
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 800),
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        children: filteredOrders
+                            .map((order) => _buildOrderCard(order))
+                            .toList(),
+                      ),
+                    ),
                   );
                 }).toList(),
               ),

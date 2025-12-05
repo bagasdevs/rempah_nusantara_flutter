@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/config/app_theme.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});

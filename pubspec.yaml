@@ -1,5 +1,5 @@
-name: myapp
-description: "A new Flutter project."
+name: rempah_nusantara
+description: "Aplikasi e-commerce Rempah Nusantara - Platform jual beli rempah-rempah tradisional Indonesia"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -100,10 +100,10 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/images/Logo_Rempah_Nusantara.png"
+  image_path: "assets/images/app_icon.png"
   web:
     generate: true
-    image_path: "assets/images/Logo_Rempah_Nusantara.png"
-  # Adaptive icons for Android
-  adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/Logo_Rempah_Nusantara.png"
+    image_path: "assets/images/app_icon.png"
+  # Adaptive icons for Android (warna hijau dari logo Rempah Nusantara)
+  adaptive_icon_background: "#2E7D32"
+  adaptive_icon_foreground: "assets/images/app_icon.png"

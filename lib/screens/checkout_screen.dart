@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/config/app_theme.dart';
-import 'package:myapp/services/api_service.dart';
-import 'package:myapp/services/payment_service.dart';
-import 'package:myapp/widgets/checkout_stepper.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
+import 'package:rempah_nusantara/services/payment_service.dart';
+import 'package:rempah_nusantara/widgets/checkout_stepper.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems;

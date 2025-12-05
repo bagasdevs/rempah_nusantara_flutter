@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/config/app_theme.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
 
 /// Utility class for handling image loading with local asset fallbacks
 class ImageUtils {
@@ -243,7 +243,7 @@ class ImageUtils {
       'assets/images/nutmeg.jpg',
       'assets/images/pepper.jpg',
       'assets/images/cumin.jpg',
-      'assets/images/Logo_Rempah_Nusantara.png',
+      'assets/images/app_icon.png',
     ];
 
     try {

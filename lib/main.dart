@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:myapp/app_router.dart';
-import 'package:myapp/services/api_service.dart';
-import 'package:myapp/services/payment_service.dart';
-import 'package:myapp/config/app_theme.dart';
-import 'package:myapp/utils/image_utils.dart';
+import 'package:rempah_nusantara/app_router.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
+import 'package:rempah_nusantara/services/payment_service.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/utils/image_utils.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -102,7 +102,7 @@ class _MyAppState extends State<MyApp> {
               children: [
                 // Logo
                 Image.asset(
-                  'assets/images/Logo_Rempah_Nusantara.png',
+                  'assets/images/app_icon.png',
                   width: 120,
                   height: 120,
                 ),

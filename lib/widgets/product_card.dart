@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/config/app_theme.dart';
-import 'package:myapp/utils/image_utils.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/utils/image_utils.dart';
 
 class ProductCard extends StatelessWidget {
   final String imageUrl;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/services/api_service.dart';
-import 'package:myapp/config/app_theme.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -58,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Image.asset(
-                    'assets/images/Logo_Rempah_Nusantara.png',
+                    'assets/images/app_icon.png',
                     fit: BoxFit.contain,
                   ),
                 ),

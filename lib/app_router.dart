@@ -1,37 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:myapp/screens/address_screen.dart';
-import 'package:myapp/screens/buyer_login_screen.dart';
-import 'package:myapp/screens/buyer_signup_screen.dart';
-import 'package:myapp/screens/cart_screen.dart';
-import 'package:myapp/screens/categories_screen.dart';
-import 'package:myapp/screens/checkout_screen.dart';
-import 'package:myapp/screens/complete_profile_screen.dart';
+import 'package:rempah_nusantara/screens/address_screen.dart';
+import 'package:rempah_nusantara/screens/buyer_login_screen.dart';
+import 'package:rempah_nusantara/screens/buyer_signup_screen.dart';
+import 'package:rempah_nusantara/screens/cart_screen.dart';
+import 'package:rempah_nusantara/screens/categories_screen.dart';
+import 'package:rempah_nusantara/screens/checkout_screen.dart';
+import 'package:rempah_nusantara/screens/complete_profile_screen.dart';
 
-import 'package:myapp/screens/edit_product_screen.dart';
-import 'package:myapp/screens/edit_profile_screen.dart';
-import 'package:myapp/screens/favorites_screen.dart';
-import 'package:myapp/screens/help_center_screen.dart';
-import 'package:myapp/screens/home_screen.dart';
-import 'package:myapp/screens/language_screen.dart';
-import 'package:myapp/screens/manage_products_screen.dart';
-import 'package:myapp/screens/notification_screen.dart';
-import 'package:myapp/screens/notification_settings_screen.dart';
-import 'package:myapp/screens/onboarding_screen.dart';
-import 'package:myapp/screens/order_success_screen.dart';
-import 'package:myapp/screens/order_status_screen.dart';
-import 'package:myapp/screens/orders_screen.dart';
-import 'package:myapp/screens/privacy_policy_screen.dart';
-import 'package:myapp/screens/product_detail_screen.dart';
-import 'package:myapp/screens/products_screen.dart';
-import 'package:myapp/screens/profile_screen.dart';
+import 'package:rempah_nusantara/screens/edit_product_screen.dart';
+import 'package:rempah_nusantara/screens/edit_profile_screen.dart';
+import 'package:rempah_nusantara/screens/favorites_screen.dart';
+import 'package:rempah_nusantara/screens/help_center_screen.dart';
+import 'package:rempah_nusantara/screens/home_screen.dart';
+import 'package:rempah_nusantara/screens/language_screen.dart';
+import 'package:rempah_nusantara/screens/manage_products_screen.dart';
+import 'package:rempah_nusantara/screens/notification_screen.dart';
+import 'package:rempah_nusantara/screens/notification_settings_screen.dart';
+import 'package:rempah_nusantara/screens/onboarding_screen.dart';
+import 'package:rempah_nusantara/screens/order_success_screen.dart';
+import 'package:rempah_nusantara/screens/order_status_screen.dart';
+import 'package:rempah_nusantara/screens/orders_screen.dart';
+import 'package:rempah_nusantara/screens/privacy_policy_screen.dart';
+import 'package:rempah_nusantara/screens/product_detail_screen.dart';
+import 'package:rempah_nusantara/screens/products_screen.dart';
+import 'package:rempah_nusantara/screens/profile_screen.dart';
 
-import 'package:myapp/screens/search_screen.dart';
-import 'package:myapp/screens/seller_profile_screen.dart';
-import 'package:myapp/screens/seller_signup_screen.dart';
-import 'package:myapp/screens/settings_screen.dart';
-import 'package:myapp/screens/splash_screen.dart';
+import 'package:rempah_nusantara/screens/search_screen.dart';
+import 'package:rempah_nusantara/screens/seller_profile_screen.dart';
+import 'package:rempah_nusantara/screens/seller_signup_screen.dart';
+import 'package:rempah_nusantara/screens/settings_screen.dart';
+import 'package:rempah_nusantara/screens/splash_screen.dart';
 
 // Custom page transition builder for slide animation
 CustomTransitionPage<void> buildPageWithSlideTransition({
@@ -347,6 +347,27 @@ final GoRouter router = GoRouter(
           state: state,
           child: OrderStatusScreen(orderId: orderId),
         );
+      },
+    ),
+    // Payment callback route for deep link from Midtrans
+    GoRoute(
+      path: '/payment/callback',
+      redirect: (BuildContext context, GoRouterState state) {
+        // Extract order_id from query parameters
+        // Format: TRX-{orderId}-{timestamp}
+        final transactionId = state.uri.queryParameters['order_id'];
+        if (transactionId != null && transactionId.isNotEmpty) {
+          // Parse order_id from transaction_id format: TRX-{orderId}-{timestamp}
+          final parts = transactionId.split('-');
+          if (parts.length >= 2) {
+            final orderId =
+                parts[1]; // Extract orderId from TRX-{orderId}-{timestamp}
+            // Redirect to order status screen
+            return '/order-status/$orderId';
+          }
+        }
+        // If no valid order_id, redirect to orders page
+        return '/orders';
       },
     ),
     GoRoute(

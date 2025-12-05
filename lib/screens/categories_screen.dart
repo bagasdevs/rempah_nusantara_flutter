@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:myapp/config/app_theme.dart';
-import 'package:myapp/widgets/custom_app_bar.dart';
-import 'package:myapp/widgets/category_chip.dart';
-import 'package:myapp/services/api_service.dart';
+import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/widgets/custom_app_bar.dart';
+import 'package:rempah_nusantara/widgets/category_chip.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});

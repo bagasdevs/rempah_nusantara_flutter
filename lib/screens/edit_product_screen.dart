@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
-import 'package:myapp/services/api_service.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 
 class EditProductScreen extends StatefulWidget {
