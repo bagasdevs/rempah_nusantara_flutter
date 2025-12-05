@@ -113,11 +113,28 @@ class PaymentService {
 
         // Open payment page in browser
         final uri = Uri.parse(redirectUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-          print('✅ [PaymentService] Payment page opened');
-        } else {
-          throw Exception('Could not launch payment URL');
+        print('🔍 [PaymentService] Checking if can launch URL...');
+
+        try {
+          // Try external application mode first
+          final launched = await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
+
+          if (launched) {
+            print('✅ [PaymentService] Payment page opened');
+          } else {
+            print(
+              '⚠️ [PaymentService] Launch returned false, trying platform default',
+            );
+            await launchUrl(uri, mode: LaunchMode.platformDefault);
+          }
+        } catch (e) {
+          print(
+            '⚠️ [PaymentService] External app failed: $e, trying platform default',
+          );
+          await launchUrl(uri, mode: LaunchMode.platformDefault);
         }
 
         // Return pending status - actual status will be checked via webhook/callback
@@ -142,13 +159,36 @@ class PaymentService {
         print('🔗 [PaymentService] URL: $redirectUrl');
 
         final uri = Uri.parse(redirectUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-          print('✅ [PaymentService] Payment page opened via redirect');
+        print('🔍 [PaymentService] Checking if can launch URL...');
+
+        try {
+          // Try external application mode first
+          final launched = await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
+
+          if (launched) {
+            print('✅ [PaymentService] Payment page opened via redirect');
+          } else {
+            print(
+              '⚠️ [PaymentService] Launch returned false, trying platform default',
+            );
+            await launchUrl(uri, mode: LaunchMode.platformDefault);
+          }
 
           return {'status': 'pending', 'message': 'Payment page opened'};
-        } else {
-          throw Exception('Could not launch payment URL');
+        } catch (e) {
+          print(
+            '⚠️ [PaymentService] External app failed: $e, trying platform default',
+          );
+          try {
+            await launchUrl(uri, mode: LaunchMode.platformDefault);
+            return {'status': 'pending', 'message': 'Payment page opened'};
+          } catch (e2) {
+            print('❌ [PaymentService] All launch attempts failed: $e2');
+            throw Exception('Could not launch payment URL: $e2');
+          }
         }
       }
 

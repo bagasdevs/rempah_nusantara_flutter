@@ -15,24 +15,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<OnboardingData> _pages = [
     OnboardingData(
-      title: 'Temukan Resep Nusantara',
+      title: 'Pasar Rempah Nusantara',
       description:
-          'Jelajahi ribuan resep masakan tradisional Indonesia dengan rempah-rempah pilihan',
-      icon: Icons.restaurant_menu,
+          'Platform marketplace yang menghubungkan langsung petani rempah dengan pembeli di seluruh Indonesia',
+      icon: Icons.storefront,
       color: AppColors.primary,
     ),
     OnboardingData(
       title: 'Rempah Berkualitas',
       description:
-          'Dapatkan rempah-rempah segar langsung dari petani lokal terpercaya',
-      icon: Icons.local_florist,
+          'Dapatkan rempah-rempah segar langsung dari petani lokal terpercaya dengan harga terbaik',
+      icon: Icons.agriculture,
       color: AppColors.secondary,
     ),
     OnboardingData(
-      title: 'Belanja Mudah',
+      title: 'Belanja Mudah & Aman',
       description:
-          'Pesan rempah dan bahan masakan dengan mudah, diantar langsung ke rumah Anda',
-      icon: Icons.shopping_cart,
+          'Pesan rempah pilihan dengan mudah, pembayaran aman, dan diantar langsung ke rumah Anda',
+      icon: Icons.local_shipping,
       color: AppColors.success,
     ),
   ];
