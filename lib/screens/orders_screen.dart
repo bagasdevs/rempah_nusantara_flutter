@@ -16,94 +16,9 @@ class _OrdersScreenState extends State<OrdersScreen>
   late TabController _tabController;
   bool _isLoading = true;
 
-  final List<String> _tabs = [
-    'Semua',
-    'Dikemas',
-    'Dikirim',
-    'Selesai',
-    'Dibatalkan',
-  ];
+  final List<String> _tabs = ['Semua', 'Dikemas', 'Dikirim', 'Selesai'];
 
   List<Map<String, dynamic>> _orders = [];
-
-  // Mock order data (fallback)
-  final List<Map<String, dynamic>> _mockOrders = [
-    {
-      'id': 'ORD-2024-001',
-      'date': '15 Jan 2024',
-      'status': 'Dikirim',
-      'total': 125000,
-      'items': [
-        {
-          'name': 'Kayu Manis Premium',
-          'quantity': 2,
-          'price': 45000,
-          'image': 'assets/images/cinnamon.jpg',
-        },
-        {
-          'name': 'Pala Utuh',
-          'quantity': 1,
-          'price': 35000,
-          'image': 'assets/images/nutmeg.jpg',
-        },
-      ],
-      'trackingNumber': 'JNE1234567890',
-      'estimatedDelivery': '18 Jan 2024',
-    },
-    {
-      'id': 'ORD-2024-002',
-      'date': '12 Jan 2024',
-      'status': 'Selesai',
-      'total': 89000,
-      'items': [
-        {
-          'name': 'Cengkeh Premium',
-          'quantity': 1,
-          'price': 55000,
-          'image': 'assets/images/cloves.jpg',
-        },
-        {
-          'name': 'Jintan Hitam',
-          'quantity': 1,
-          'price': 34000,
-          'image': 'assets/images/cumin.jpg',
-        },
-      ],
-      'trackingNumber': 'JNE0987654321',
-      'deliveredDate': '14 Jan 2024',
-    },
-    {
-      'id': 'ORD-2024-003',
-      'date': '10 Jan 2024',
-      'status': 'Dikemas',
-      'total': 156000,
-      'items': [
-        {
-          'name': 'Lada Hitam Premium',
-          'quantity': 3,
-          'price': 52000,
-          'image': 'assets/images/pepper.jpg',
-        },
-      ],
-      'estimatedDelivery': '17 Jan 2024',
-    },
-    {
-      'id': 'ORD-2023-125',
-      'date': '28 Des 2023',
-      'status': 'Dibatalkan',
-      'total': 75000,
-      'items': [
-        {
-          'name': 'Kunyit Bubuk',
-          'quantity': 2,
-          'price': 37500,
-          'image': 'assets/images/turmeric.jpg',
-        },
-      ],
-      'cancelReason': 'Dibatalkan oleh pembeli',
-      'cancelDate': '29 Des 2023',
-    },
-  ];
 
   @override
   void initState() {
@@ -119,7 +34,9 @@ class _OrdersScreenState extends State<OrdersScreen>
   }
 
   Future<void> _loadOrders() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       print('📦 [ORDERS] Loading orders from API...');
@@ -138,72 +55,72 @@ class _OrdersScreenState extends State<OrdersScreen>
       print('❌ [ORDERS] Error loading orders: $e');
       if (mounted) {
         setState(() {
-          _orders = _mockOrders; // Fallback to mock data
+          _orders = [];
           _isLoading = false;
         });
-        print('⚠️ [ORDERS] Using mock data (${_mockOrders.length} orders)');
       }
     }
   }
 
   List<Map<String, dynamic>> _getFilteredOrders() {
     final currentTab = _tabs[_tabController.index];
-    final ordersToFilter = _orders.isEmpty ? _mockOrders : _orders;
 
     print('🔍 [ORDERS] Filtering for tab: $currentTab');
-    print('📊 [ORDERS] Total orders to filter: ${ordersToFilter.length}');
+    print('📊 [ORDERS] Total orders to filter: ${_orders.length}');
 
     if (currentTab == 'Semua') {
-      print('✅ [ORDERS] Showing all ${ordersToFilter.length} orders');
-      return ordersToFilter;
+      print('✅ [ORDERS] Showing all ${_orders.length} orders');
+      return _orders;
     }
 
-    return ordersToFilter.where((order) {
+    return _orders.where((order) {
       final orderStatus = order['status']?.toString().toLowerCase() ?? '';
       final paymentStatus =
           order['payment_status']?.toString().toLowerCase() ?? '';
 
       if (currentTab == 'Dikemas') {
         return orderStatus == 'processing' ||
-            orderStatus == 'pending_payment' && paymentStatus == 'paid';
+            (orderStatus == 'pending_payment' && paymentStatus == 'paid');
       } else if (currentTab == 'Dikirim') {
         return orderStatus == 'shipped';
       } else if (currentTab == 'Selesai') {
-        return orderStatus == 'completed';
-      } else if (currentTab == 'Dibatalkan') {
-        return orderStatus == 'cancelled';
+        return orderStatus == 'delivered' || orderStatus == 'completed';
       }
       return false;
     }).toList();
   }
 
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Dikemas':
-        return Colors.orange;
-      case 'Dikirim':
-        return Colors.blue;
-      case 'Selesai':
-        return AppColors.primary;
-      case 'Dibatalkan':
-        return Colors.red;
-      default:
-        return Colors.grey;
+    final normalizedStatus = status.toLowerCase();
+    if (normalizedStatus.contains('processing') ||
+        normalizedStatus.contains('paid')) {
+      return Colors.orange;
+    } else if (normalizedStatus.contains('shipped')) {
+      return Colors.blue;
+    } else if (normalizedStatus.contains('delivered') ||
+        normalizedStatus.contains('completed')) {
+      return AppColors.primary;
+    } else if (normalizedStatus.contains('cancelled')) {
+      return Colors.red;
+    } else {
+      return Colors.grey;
     }
   }
 
   IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'Dikemas':
-        return Icons.inventory_2_outlined;
-      case 'Dikirim':
-        return Icons.local_shipping_outlined;
-      case 'Selesai':
-        return Icons.check_circle_outline;
-      case 'Dibatalkan':
-        return Icons.cancel_outlined;
-      default:
-        return Icons.shopping_bag_outlined;
+    final normalizedStatus = status.toLowerCase();
+    if (normalizedStatus.contains('processing') ||
+        normalizedStatus.contains('paid')) {
+      return Icons.inventory_2_outlined;
+    } else if (normalizedStatus.contains('shipped')) {
+      return Icons.local_shipping_outlined;
+    } else if (normalizedStatus.contains('delivered') ||
+        normalizedStatus.contains('completed')) {
+      return Icons.check_circle_outline;
+    } else if (normalizedStatus.contains('cancelled')) {
+      return Icons.cancel_outlined;
+    } else {
+      return Icons.shopping_bag_outlined;
     }
   }
 

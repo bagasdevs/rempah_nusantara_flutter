@@ -31,19 +31,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     try {
+      // Load profile data
       final data = await ApiService.getProfile(ApiService.currentUserId!);
+
+      // Load orders count
+      final orders = await ApiService.getOrders();
+      final ordersCount = orders.length;
+
+      // Load favorites count
+      final favorites = await ApiService.getFavorites();
+      final favoritesCount = favorites.length;
+
       if (mounted) {
         setState(() {
           _userData = data;
-          // Mock stats - replace with real API calls
-          _stats = {'orders': 12, 'favorites': 24};
+          _stats = {'orders': ordersCount, 'favorites': favoritesCount};
           _isLoading = false;
         });
       }
     } catch (e) {
       print('Error loading profile: $e');
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _stats = {'orders': 0, 'favorites': 0};
+          _isLoading = false;
+        });
       }
     }
   }
@@ -307,7 +319,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             value: _stats['favorites'].toString(),
             onTap: () => context.push('/favorites'),
           ),
-          Container(width: 1, height: 40, color: AppColors.border),
         ],
       ),
     );

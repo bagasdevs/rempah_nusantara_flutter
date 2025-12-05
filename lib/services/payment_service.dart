@@ -26,7 +26,7 @@ class PaymentService {
   static Future<void> _ensureInitialized() async {
     if (_midtransSDK != null) return;
 
-    if (_clientKey == null || _isProduction == null) {
+    if (!_isInitialized || _clientKey == null || _isProduction == null) {
       throw Exception('PaymentService not configured. Call init() first.');
     }
 
