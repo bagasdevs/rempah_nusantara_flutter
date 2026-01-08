@@ -52,6 +52,9 @@ class _SellerSignupScreenState extends State<SellerSignupScreen> {
         address: _addressController.text.trim(),
       );
 
+      // Update stored role to seller
+      await ApiService.setUserRole('seller');
+
       if (mounted) {
         // Show success dialog
         await showDialog(
@@ -97,6 +100,7 @@ class _SellerSignupScreenState extends State<SellerSignupScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
+                      // Navigate to manage products with seller role already set
                       context.go('/manage-products');
                     },
                     style: ElevatedButton.styleFrom(

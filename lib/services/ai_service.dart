@@ -1,12 +1,94 @@
-import 'api_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 /// AI Service for Rempah Nusantara
 ///
-/// Provides access to AI-powered features:
+/// Provides access to AI-powered features hosted on Hugging Face Spaces:
 /// - Price Prediction (LSTM)
 /// - Sentiment Analysis (CNN-LSTM)
 /// - Anomaly Detection (Isolation Forest)
 class AiService {
+  // Hugging Face Space URL
+  static const String _baseUrl =
+      'https://bagasdev-rempah-nusantara-ai.hf.space';
+
+  // HTTP timeout duration
+  static const Duration _timeout = Duration(seconds: 30);
+
+  /// Build headers for API requests
+  static Map<String, String> _buildHeaders() {
+    return {'Content-Type': 'application/json', 'Accept': 'application/json'};
+  }
+
+  /// Make POST request to HF Space
+  static Future<Map<String, dynamic>> _post(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    final url = '$_baseUrl$endpoint';
+    print('🤖 [AI] POST $url');
+    print('🤖 [AI] Body: $body');
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse(url),
+            headers: _buildHeaders(),
+            body: jsonEncode(body),
+          )
+          .timeout(_timeout);
+
+      print('🤖 [AI] Status: ${response.statusCode}');
+      print('🤖 [AI] Response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['detail'] ?? 'AI service error');
+      }
+    } catch (e) {
+      print('❌ [AI] Error: $e');
+      rethrow;
+    }
+  }
+
+  /// Make GET request to HF Space
+  static Future<Map<String, dynamic>> _get(String endpoint) async {
+    final url = '$_baseUrl$endpoint';
+    print('🤖 [AI] GET $url');
+
+    try {
+      final response = await http
+          .get(Uri.parse(url), headers: _buildHeaders())
+          .timeout(_timeout);
+
+      print('🤖 [AI] Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('AI service error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ [AI] Error: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== HEALTH CHECK ====================
+
+  /// Check if AI service is available
+  static Future<bool> isAvailable() async {
+    try {
+      final result = await _get('/');
+      return result['success'] == true;
+    } catch (e) {
+      print('❌ [AI] Health check failed: $e');
+      return false;
+    }
+  }
+
   // ==================== PRICE PREDICTION ====================
 
   /// Predict optimal price based on 10 historical prices
@@ -25,14 +107,13 @@ class AiService {
     }
 
     try {
-      final result = await ApiService.post('/api/ai/price', {
-        'data': historicalPrices,
-      });
+      final result = await _post('/predict/price', {'data': historicalPrices});
 
       if (result['success'] == true && result['data'] != null) {
         return PricePredictionResult.fromJson(result['data']);
       } else {
-        throw Exception(result['message'] ?? 'Price prediction failed');
+        final error = result['error'];
+        throw Exception(error?['message'] ?? 'Price prediction failed');
       }
     } catch (e) {
       print('❌ [AI] Price prediction error: $e');
@@ -56,14 +137,13 @@ class AiService {
     }
 
     try {
-      final result = await ApiService.post('/api/ai/sentiment', {
-        'text': text.trim(),
-      });
+      final result = await _post('/analyze/sentiment', {'text': text.trim()});
 
       if (result['success'] == true && result['data'] != null) {
         return SentimentResult.fromJson(result['data']);
       } else {
-        throw Exception(result['message'] ?? 'Sentiment analysis failed');
+        final error = result['error'];
+        throw Exception(error?['message'] ?? 'Sentiment analysis failed');
       }
     } catch (e) {
       print('❌ [AI] Sentiment analysis error: $e');
@@ -88,6 +168,7 @@ class AiService {
         results.add(
           SentimentResult(
             sentiment: 'Unknown',
+            sentimentLabel: 'Tidak Diketahui',
             confidence: 0.0,
             rawScore: 0.0,
             emoji: '❓',
@@ -123,7 +204,7 @@ class AiService {
     }
 
     try {
-      final result = await ApiService.post('/api/ai/anomaly', {
+      final result = await _post('/detect/anomaly', {
         'transaction_volume': transactionVolume,
         'transaction_frequency': transactionFrequency,
       });
@@ -131,32 +212,11 @@ class AiService {
       if (result['success'] == true && result['data'] != null) {
         return AnomalyResult.fromJson(result['data']);
       } else {
-        throw Exception(result['message'] ?? 'Anomaly detection failed');
+        final error = result['error'];
+        throw Exception(error?['message'] ?? 'Anomaly detection failed');
       }
     } catch (e) {
       print('❌ [AI] Anomaly detection error: $e');
-      rethrow;
-    }
-  }
-
-  /// Check if a buyer's transaction history is suspicious
-  ///
-  /// [buyerId] - User ID of the buyer
-  /// Returns anomaly detection based on historical transactions
-  static Future<AnomalyResult> checkBuyerHistory(String buyerId) async {
-    // This would typically fetch buyer's transaction history first
-    // For now, we'll need to implement this with actual data
-
-    try {
-      final result = await ApiService.get('/api/ai/anomaly/buyer?id=$buyerId');
-
-      if (result['success'] == true && result['data'] != null) {
-        return AnomalyResult.fromJson(result['data']);
-      } else {
-        throw Exception(result['message'] ?? 'Buyer check failed');
-      }
-    } catch (e) {
-      print('❌ [AI] Buyer history check error: $e');
       rethrow;
     }
   }
@@ -173,6 +233,7 @@ class PricePredictionResult {
   final double inputMean;
   final double inputLast;
   final double priceChange;
+  final String trend;
 
   PricePredictionResult({
     required this.predictedPrice,
@@ -182,6 +243,7 @@ class PricePredictionResult {
     required this.inputMean,
     required this.inputLast,
     required this.priceChange,
+    required this.trend,
   });
 
   factory PricePredictionResult.fromJson(Map<String, dynamic> json) {
@@ -194,17 +256,29 @@ class PricePredictionResult {
       inputMax: (inputPrices['max'] as num?)?.toDouble() ?? 0.0,
       inputMean: (inputPrices['mean'] as num?)?.toDouble() ?? 0.0,
       inputLast: (inputPrices['last'] as num?)?.toDouble() ?? 0.0,
-      priceChange: (json['price_change'] as num?)?.toDouble() ?? 0.0,
+      priceChange: (json['price_change_percent'] as num?)?.toDouble() ?? 0.0,
+      trend: json['trend'] ?? 'stable',
     );
   }
 
-  bool get isPriceIncreasing => priceChange > 0;
-  bool get isPriceDecreasing => priceChange < 0;
-  bool get isPriceStable => priceChange.abs() < 1.0;
+  bool get isPriceIncreasing => trend == 'up';
+  bool get isPriceDecreasing => trend == 'down';
+  bool get isPriceStable => trend == 'stable';
 
   String get priceChangeFormatted {
     final sign = priceChange >= 0 ? '+' : '';
     return '$sign${priceChange.toStringAsFixed(2)}%';
+  }
+
+  String get trendEmoji {
+    switch (trend) {
+      case 'up':
+        return '📈';
+      case 'down':
+        return '📉';
+      default:
+        return '➡️';
+    }
   }
 
   String get recommendation {
@@ -223,13 +297,14 @@ class PricePredictionResult {
 
   @override
   String toString() {
-    return 'PricePredictionResult(predicted: Rp $predictedPrice, change: $priceChangeFormatted)';
+    return 'PricePredictionResult(predicted: Rp $predictedPrice, change: $priceChangeFormatted, trend: $trend)';
   }
 }
 
 /// Sentiment Analysis Result
 class SentimentResult {
   final String sentiment;
+  final String sentimentLabel;
   final double confidence;
   final double rawScore;
   final String emoji;
@@ -238,6 +313,7 @@ class SentimentResult {
 
   SentimentResult({
     required this.sentiment,
+    required this.sentimentLabel,
     required this.confidence,
     required this.rawScore,
     required this.emoji,
@@ -248,6 +324,7 @@ class SentimentResult {
   factory SentimentResult.fromJson(Map<String, dynamic> json) {
     return SentimentResult(
       sentiment: json['sentiment'] ?? 'Unknown',
+      sentimentLabel: json['sentiment_label'] ?? 'Tidak Diketahui',
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
       rawScore: (json['raw_score'] as num?)?.toDouble() ?? 0.0,
       emoji: json['emoji'] ?? '❓',
@@ -263,14 +340,16 @@ class SentimentResult {
 
   @override
   String toString() {
-    return 'SentimentResult($emoji $sentiment, confidence: $confidencePercent)';
+    return 'SentimentResult($emoji $sentimentLabel, confidence: $confidencePercent)';
   }
 }
 
 /// Anomaly Detection Result
 class AnomalyResult {
   final String status;
+  final String statusLabel;
   final String riskLevel;
+  final String riskLabel;
   final String recommendation;
   final double transactionVolume;
   final double transactionFrequency;
@@ -278,7 +357,9 @@ class AnomalyResult {
 
   AnomalyResult({
     required this.status,
+    required this.statusLabel,
     required this.riskLevel,
+    required this.riskLabel,
     required this.recommendation,
     required this.transactionVolume,
     required this.transactionFrequency,
@@ -290,7 +371,9 @@ class AnomalyResult {
 
     return AnomalyResult(
       status: json['status'] ?? 'Unknown',
+      statusLabel: json['status_label'] ?? 'Tidak Diketahui',
       riskLevel: json['risk_level'] ?? 'unknown',
+      riskLabel: json['risk_label'] ?? 'Tidak Diketahui',
       recommendation: json['recommendation'] ?? '',
       transactionVolume: (details['volume_kg'] as num?)?.toDouble() ?? 0.0,
       transactionFrequency:
@@ -300,32 +383,32 @@ class AnomalyResult {
   }
 
   bool get isNormal => status.toLowerCase() == 'normal';
-  bool get isAnomalous => status.toLowerCase() == 'anomalous';
+  bool get isAnomalous => status.toLowerCase() == 'anomaly';
   bool get isHighRisk => riskLevel.toLowerCase() == 'high';
 
   String get statusFormatted {
     if (isNormal) {
-      return '✅ Normal';
+      return '✅ $statusLabel';
     } else {
-      return '⚠️ Mencurigakan';
+      return '⚠️ $statusLabel';
     }
   }
 
   String get riskBadge {
     switch (riskLevel.toLowerCase()) {
       case 'low':
-        return '🟢 Risiko Rendah';
+        return '🟢 $riskLabel';
       case 'medium':
-        return '🟡 Risiko Sedang';
+        return '🟡 $riskLabel';
       case 'high':
-        return '🔴 Risiko Tinggi';
+        return '🔴 $riskLabel';
       default:
-        return '⚪ Tidak Diketahui';
+        return '⚪ $riskLabel';
     }
   }
 
   @override
   String toString() {
-    return 'AnomalyResult($statusFormatted, risk: $riskLevel)';
+    return 'AnomalyResult($statusFormatted, risk: $riskLabel)';
   }
 }

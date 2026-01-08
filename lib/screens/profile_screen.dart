@@ -181,9 +181,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildHeader() {
-    final name = _userData?['name'] ?? _userData?['full_name'] ?? 'User';
+    // Try multiple fields for name, prioritize full_name
+    final name =
+        _userData?['full_name'] ??
+        _userData?['name'] ??
+        ApiService.currentUserName ??
+        'User';
     final email = _userData?['email'] ?? '';
     final avatarUrl = _userData?['avatar_url'] as String?;
+    final role = _userData?['role'] ?? ApiService.currentUserRole ?? 'buyer';
+    final isSeller = role == 'seller' || role == 'admin';
 
     return Container(
       width: double.infinity,
@@ -250,6 +257,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              if (isSeller) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        role == 'admin'
+                            ? Icons.admin_panel_settings
+                            : Icons.store,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        role == 'admin' ? 'Admin' : 'Penjual',
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 4),
               Text(
                 email,
@@ -360,6 +400,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMenuSection() {
+    final role = _userData?['role'] ?? ApiService.currentUserRole ?? 'buyer';
+    final isSeller = role == 'seller' || role == 'admin';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -396,11 +439,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onTap: () => context.push('/address'),
           ),
           const Divider(height: 1, indent: 72),
+          // Show different menu based on seller status
+          if (isSeller) ...[
+            _buildMenuItem(
+              icon: Icons.store_outlined,
+              title: 'Toko Saya',
+              subtitle: 'Kelola produk Anda',
+              onTap: () => context.push('/manage-products'),
+            ),
+          ] else ...[
+            _buildMenuItem(
+              icon: Icons.storefront_outlined,
+              title: 'Mulai Berjualan',
+              subtitle: 'Daftar sebagai penjual',
+              onTap: () => context.push('/seller-signup'),
+              showBadge: true,
+            ),
+          ],
+          const Divider(height: 1, indent: 72),
           _buildMenuItem(
-            icon: Icons.store_outlined,
-            title: 'Toko Saya',
-            subtitle: 'Kelola produk Anda',
-            onTap: () => context.push('/manage-products'),
+            icon: Icons.psychology,
+            title: 'AI Tools',
+            subtitle: 'Prediksi harga, analisis sentimen',
+            onTap: () => context.push('/ai-tools'),
+            showBadge: true,
           ),
           const Divider(height: 1, indent: 72),
           _buildMenuItem(
@@ -428,6 +490,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    bool showBadge = false,
   }) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -435,17 +498,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
+          color: showBadge
+              ? AppColors.secondary.withOpacity(0.15)
+              : AppColors.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
         ),
-        child: Icon(icon, color: AppColors.primary, size: 24),
-      ),
-      title: Text(
-        title,
-        style: AppTextStyles.bodyLarge.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+        child: Icon(
+          icon,
+          color: showBadge ? AppColors.secondary : AppColors.primary,
+          size: 24,
         ),
+      ),
+      title: Row(
+        children: [
+          Text(
+            title,
+            style: AppTextStyles.bodyLarge.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          if (showBadge) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.secondary],
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'BARU',
+                style: AppTextStyles.caption.copyWith(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
       subtitle: Text(
         subtitle,

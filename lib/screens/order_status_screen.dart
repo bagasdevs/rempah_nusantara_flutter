@@ -350,26 +350,113 @@ class _OrderStatusScreenState extends State<OrderStatusScreen>
     final statusColor = _getStatusColor(_paymentStatus);
     final statusIcon = _getStatusIcon(_paymentStatus);
     final statusText = _getStatusText(_paymentStatus);
+    final isPaid = _paymentStatus == 'paid' || _paymentStatus == 'settlement';
 
     return Card(
-      child: Padding(
-        padding: EdgeInsets.all(16),
+      elevation: isPaid ? 4 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isPaid
+            ? BorderSide(color: Colors.green.shade300, width: 2)
+            : BorderSide.none,
+      ),
+      child: Container(
+        decoration: isPaid
+            ? BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.green.shade50, Colors.white],
+                ),
+              )
+            : null,
+        padding: EdgeInsets.all(24),
         child: Column(
           children: [
-            Icon(statusIcon, size: 64, color: statusColor),
-            SizedBox(height: 12),
+            // Success animation container
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: statusColor.withOpacity(0.15),
+                border: Border.all(
+                  color: statusColor.withOpacity(0.3),
+                  width: 3,
+                ),
+              ),
+              child: Icon(statusIcon, size: 56, color: statusColor),
+            ),
+            SizedBox(height: 20),
             Text(
               statusText,
-              style: AppTextStyles.heading2.copyWith(color: statusColor),
+              style: AppTextStyles.heading2.copyWith(
+                color: statusColor,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 8),
-            Text(
-              'Status Pembayaran',
-              style: AppTextStyles.body2.copyWith(
-                color: AppColors.textSecondary,
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Status Pembayaran',
+                style: AppTextStyles.body2.copyWith(
+                  color: statusColor,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
+            // Success message for paid status
+            if (isPaid) ...[
+              SizedBox(height: 20),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.celebration,
+                      color: Colors.green.shade700,
+                      size: 28,
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Terima kasih!',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: Colors.green.shade800,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Pesanan Anda sedang diproses',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             // Countdown timer when redirecting
             if (_isRedirecting) ...[
               SizedBox(height: 16),
@@ -495,28 +582,48 @@ class _OrderStatusScreenState extends State<OrderStatusScreen>
   Widget _buildOrderDetails() {
     if (_orderData == null) return SizedBox.shrink();
 
+    final isPaid = _paymentStatus == 'paid' || _paymentStatus == 'settlement';
+
     return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Detail Pesanan', style: AppTextStyles.heading3),
-            SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.receipt_long, color: AppColors.primary, size: 22),
+                SizedBox(width: 8),
+                Text('Detail Pesanan', style: AppTextStyles.heading3),
+              ],
+            ),
+            SizedBox(height: 20),
             _buildDetailRow(
               'Total Pembayaran',
               'Rp ${_formatCurrency(_orderData?['total_price'] ?? 0)}',
+              isHighlighted: true,
             ),
             _buildDetailRow(
               'Biaya Pengiriman',
               'Rp ${_formatCurrency(_orderData?['shipping_cost'] ?? 0)}',
             ),
             Divider(height: 24),
-            _buildDetailRow('Status Pesanan', _formatOrderStatus(_orderStatus)),
+            _buildDetailRow(
+              'Status Pesanan',
+              _formatOrderStatus(_orderStatus),
+              valueColor: isPaid ? Colors.green : null,
+            ),
             if (_orderData?['created_at'] != null)
               _buildDetailRow(
                 'Tanggal Pesanan',
                 _formatDate(_orderData!['created_at']),
+              ),
+            if (_orderData?['paid_at'] != null && isPaid)
+              _buildDetailRow(
+                'Tanggal Pembayaran',
+                _formatDate(_orderData!['paid_at']),
+                valueColor: Colors.green,
               ),
           ],
         ),
@@ -524,16 +631,28 @@ class _OrderStatusScreenState extends State<OrderStatusScreen>
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(
+    String label,
+    String value, {
+    bool isHighlighted = false,
+    Color? valueColor,
+  }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 14),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.body2),
+          Text(
+            label,
+            style: AppTextStyles.body2.copyWith(color: AppColors.textSecondary),
+          ),
           Text(
             value,
-            style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.w600),
+            style: AppTextStyles.body1.copyWith(
+              fontWeight: isHighlighted ? FontWeight.bold : FontWeight.w600,
+              fontSize: isHighlighted ? 16 : 14,
+              color: valueColor ?? AppColors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -601,14 +720,39 @@ class _OrderStatusScreenState extends State<OrderStatusScreen>
             ),
           ),
         ],
-        if (_paymentStatus == 'paid' || _paymentStatus == 'settlement')
-          ElevatedButton(
-            onPressed: () => context.go('/orders'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: Size(double.infinity, 48),
+        if (_paymentStatus == 'paid' || _paymentStatus == 'settlement') ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.go('/orders'),
+              icon: Icon(Icons.list_alt),
+              label: Text('Lihat Semua Pesanan'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
-            child: Text('Lihat Semua Pesanan'),
           ),
+          SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.go('/'),
+              icon: Icon(Icons.home_outlined),
+              label: Text('Kembali ke Beranda'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
         if (_paymentStatus == 'pending') ...[
           ElevatedButton(
             onPressed: () => context.go('/orders'),

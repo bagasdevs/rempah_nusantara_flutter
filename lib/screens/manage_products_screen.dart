@@ -19,6 +19,8 @@ class _ManageProductsScreenState extends State<ManageProductsScreen>
   Map<String, dynamic>? _dashboardData;
   bool _isLoadingDashboard = true;
   String _dashboardError = '';
+  bool _isSellerCheckDone = false;
+  bool _isSeller = false;
 
   final _currencyFormat = NumberFormat.currency(
     locale: 'id_ID',
@@ -30,8 +32,59 @@ class _ManageProductsScreenState extends State<ManageProductsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _productsFuture = _fetchProducts();
-    _fetchDashboard();
+    _checkSellerStatus();
+  }
+
+  Future<void> _checkSellerStatus() async {
+    // First check from stored role
+    if (ApiService.isSeller) {
+      setState(() {
+        _isSeller = true;
+        _isSellerCheckDone = true;
+      });
+      _productsFuture = _fetchProducts();
+      _fetchDashboard();
+      return;
+    }
+
+    // If not stored, fetch from API
+    if (ApiService.isAuthenticated && ApiService.currentUserId != null) {
+      try {
+        final profile = await ApiService.getProfile(ApiService.currentUserId!);
+        final role = profile['role'] ?? 'buyer';
+        final isSeller = role == 'seller' || role == 'admin';
+
+        // Update stored role
+        if (profile['role'] != null) {
+          await ApiService.setUserRole(profile['role']);
+        }
+
+        if (mounted) {
+          setState(() {
+            _isSeller = isSeller;
+            _isSellerCheckDone = true;
+          });
+
+          if (isSeller) {
+            _productsFuture = _fetchProducts();
+            _fetchDashboard();
+          }
+        }
+      } catch (e) {
+        print('Error checking seller status: $e');
+        if (mounted) {
+          setState(() {
+            _isSeller = false;
+            _isSellerCheckDone = true;
+          });
+        }
+      }
+    } else {
+      setState(() {
+        _isSellerCheckDone = true;
+        _isSeller = false;
+      });
+    }
   }
 
   @override
@@ -163,6 +216,36 @@ class _ManageProductsScreenState extends State<ManageProductsScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Show loading while checking seller status
+    if (!_isSellerCheckDone) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text(
+            'Dashboard Penjual',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
+    // Show seller signup prompt if not a seller
+    if (!_isSeller) {
+      return _buildNotSellerView();
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -215,6 +298,161 @@ class _ManageProductsScreenState extends State<ManageProductsScreen>
           'Tambah Produk',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
+      ),
+    );
+  }
+
+  // ==================== NOT SELLER VIEW ====================
+
+  Widget _buildNotSellerView() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
+          'Mulai Berjualan',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.1),
+                      AppColors.secondary.withOpacity(0.1),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.storefront_outlined,
+                  size: 80,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Jadi Penjual di\nRempah Nusantara',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.heading2.copyWith(
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Mulai jual produk rempah berkualitas Anda\ndan jangkau pelanggan di seluruh Indonesia',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Benefits
+              _buildBenefitItem(
+                Icons.trending_up,
+                'Tingkatkan Penjualan',
+                'Akses ke ribuan pelanggan potensial',
+              ),
+              _buildBenefitItem(
+                Icons.dashboard_outlined,
+                'Dashboard Lengkap',
+                'Kelola produk dan pesanan dengan mudah',
+              ),
+              _buildBenefitItem(
+                Icons.payments_outlined,
+                'Pembayaran Aman',
+                'Sistem pembayaran terintegrasi dan aman',
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final result = await context.push('/seller-signup');
+                    if (result == true || mounted) {
+                      // Recheck seller status after returning
+                      _checkSellerStatus();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Daftar Jadi Penjual',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => context.pop(),
+                child: Text(
+                  'Nanti Saja',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBenefitItem(IconData icon, String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -606,9 +606,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showLogoutDialog() {
+    // Save parent context before showing dialog
+    final parentContext = context;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
         ),
@@ -639,7 +642,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(
               'Batal',
               style: AppTextStyles.button.copyWith(
@@ -649,10 +652,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              // Close dialog first
+              Navigator.pop(dialogContext);
+
+              // Logout
               await ApiService.logout();
+
+              // Navigate using parent context (not dialog context)
               if (mounted) {
-                context.go('/login');
+                parentContext.go('/login');
               }
             },
             style: ElevatedButton.styleFrom(
@@ -670,14 +678,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showDeleteAccountDialog() {
+    // Save parent context before showing dialog
+    final parentContext = context;
     final TextEditingController confirmController = TextEditingController();
     bool isDeleting = false;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
           ),
@@ -781,7 +791,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? null
                   : () {
                       confirmController.dispose();
-                      Navigator.pop(context);
+                      Navigator.pop(dialogContext);
                     },
               child: Text(
                 'Batal',
@@ -797,7 +807,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? null
                   : () async {
                       if (confirmController.text.toUpperCase() != 'HAPUS') {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
                           const SnackBar(
                             content: Text('Ketik "HAPUS" untuk mengkonfirmasi'),
                             backgroundColor: AppColors.error,
@@ -816,23 +826,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         confirmController.dispose();
 
                         if (mounted) {
-                          Navigator.pop(context);
+                          // Close dialog first
+                          Navigator.pop(dialogContext);
 
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
                             const SnackBar(
                               content: Text('Akun berhasil dihapus'),
                               backgroundColor: AppColors.success,
                             ),
                           );
 
-                          // Redirect to login
-                          context.go('/login');
+                          // Navigate using parent context (not dialog context)
+                          parentContext.go('/login');
                         }
                       } catch (e) {
                         setDialogState(() => isDeleting = false);
 
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
                             SnackBar(
                               content: Text(
                                 'Gagal menghapus akun: ${e.toString().replaceAll('Exception: ', '')}',

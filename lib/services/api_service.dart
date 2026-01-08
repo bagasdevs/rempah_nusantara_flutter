@@ -10,12 +10,16 @@ class ApiService {
 
   static String? _token;
   static String? _userId;
+  static String? _userRole;
+  static String? _userName;
 
   /// Initialize service - load token from storage
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
     _userId = prefs.getString('user_id');
+    _userRole = prefs.getString('user_role');
+    _userName = prefs.getString('user_name');
   }
 
   /// Save token to storage
@@ -32,20 +36,50 @@ class ApiService {
     await prefs.setString('user_id', userId);
   }
 
+  /// Save user role
+  static Future<void> setUserRole(String role) async {
+    _userRole = role;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_role', role);
+  }
+
+  /// Save user name
+  static Future<void> setUserName(String name) async {
+    _userName = name;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', name);
+  }
+
   /// Clear token and user data
   static Future<void> clearAuth() async {
     _token = null;
     _userId = null;
+    _userRole = null;
+    _userName = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('user_id');
+    await prefs.remove('user_role');
+    await prefs.remove('user_name');
   }
 
   /// Get current user ID
   static String? get currentUserId => _userId;
 
+  /// Get current user role
+  static String? get currentUserRole => _userRole;
+
+  /// Get current user name
+  static String? get currentUserName => _userName;
+
   /// Check if user is authenticated
   static bool get isAuthenticated => _token != null;
+
+  /// Check if current user is a seller
+  static bool get isSeller => _userRole == 'seller' || _userRole == 'admin';
+
+  /// Check if current user is an admin
+  static bool get isAdmin => _userRole == 'admin';
 
   // ==================== HTTP METHODS ====================
 
@@ -268,8 +302,20 @@ class ApiService {
     if (result['success'] == true) {
       await setToken(result['data']['access_token']);
       await setUserId(result['data']['user']['id']);
+
+      // Save user role and name
+      final user = result['data']['user'];
+      if (user['role'] != null) {
+        await setUserRole(user['role']);
+      }
+      if (user['full_name'] != null) {
+        await setUserName(user['full_name']);
+      } else if (user['name'] != null) {
+        await setUserName(user['name']);
+      }
+
       print(
-        '🔐 [ApiService] Token saved, user ID: ${result['data']['user']['id']}',
+        '🔐 [ApiService] Token saved, user ID: ${result['data']['user']['id']}, role: ${user['role']}',
       );
     } else {
       print('❌ [ApiService] Login failed: ${result['message']}');
