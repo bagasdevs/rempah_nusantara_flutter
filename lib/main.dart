@@ -3,8 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:rempah_nusantara/app_router.dart';
 import 'package:rempah_nusantara/services/api_service.dart';
 import 'package:rempah_nusantara/services/payment_service.dart';
+import 'package:rempah_nusantara/services/deep_link_service.dart';
 import 'package:rempah_nusantara/config/app_theme.dart';
 import 'package:rempah_nusantara/utils/image_utils.dart';
+
+/// Global navigator key for deep link navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +41,9 @@ Future<void> main() async {
       clientKey: 'SB-Mid-client-Y7EOICoq4eYEVyxz', // Sandbox client key
       isProduction: false,
     );
+
+    // Initialize Deep Link Service (for handling Midtrans payment callbacks)
+    await DeepLinkService.instance.init();
   } catch (e) {
     debugPrint('Error during initialization: $e');
     // Continue app launch even if initialization fails
@@ -59,6 +66,32 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _initializeApp();
+    _setupDeepLinkHandler();
+  }
+
+  @override
+  void dispose() {
+    DeepLinkService.instance.dispose();
+    super.dispose();
+  }
+
+  /// Set up deep link handler to navigate using GoRouter
+  void _setupDeepLinkHandler() {
+    DeepLinkService.instance.setNavigationCallback((String path) {
+      debugPrint('🔗 [MyApp] Deep link navigation requested: $path');
+
+      // Use GoRouter to navigate
+      // We need to wait for the app to be fully initialized
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          // Access the router and navigate
+          router.go(path);
+          debugPrint('✅ [MyApp] Navigated to: $path');
+        } catch (e) {
+          debugPrint('❌ [MyApp] Navigation error: $e');
+        }
+      });
+    });
   }
 
   Future<void> _initializeApp() async {

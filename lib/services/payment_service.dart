@@ -241,9 +241,11 @@ class PaymentService {
 
       // Step 1: Create payment transaction and get Snap token
       // Use deep link for web to redirect back to app after payment
+      // For mobile, we pass the orderId directly (not transaction_id) for easier parsing
+      // The deep link handler will extract this and navigate to order-status screen
       final finishRedirectUrl = kIsWeb
           ? '${Uri.base.origin}/#/order-status/$orderId'
-          : 'com.rempahnusantara://payment/callback?order_id=$orderId';
+          : 'com.rempahnusantara://payment/callback?order_id=$orderId&app_order_id=$orderId';
 
       final paymentData = await createPayment(
         orderId: orderId,

@@ -15,7 +15,8 @@ class OrderStatusScreen extends StatefulWidget {
   State<OrderStatusScreen> createState() => _OrderStatusScreenState();
 }
 
-class _OrderStatusScreenState extends State<OrderStatusScreen> {
+class _OrderStatusScreenState extends State<OrderStatusScreen>
+    with WidgetsBindingObserver {
   Timer? _pollingTimer;
   Timer? _redirectTimer;
   Map<String, dynamic>? _orderData;
@@ -30,15 +31,61 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   @override
   void initState() {
     super.initState();
+    // Register observer to detect when app comes back from payment page
+    WidgetsBinding.instance.addObserver(this);
     _loadOrderStatus();
     _startPolling();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pollingTimer?.cancel();
     _redirectTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // When app resumes (user comes back from Midtrans payment page)
+    if (state == AppLifecycleState.resumed) {
+      print('🔄 [OrderStatusScreen] App resumed - refreshing payment status');
+      _handleAppResumed();
+    }
+  }
+
+  /// Called when app resumes from background (e.g., after Midtrans payment)
+  Future<void> _handleAppResumed() async {
+    // Only refresh if payment is still pending
+    if (_paymentStatus == 'pending' && mounted) {
+      // Show loading indicator
+      setState(() => _isLoading = true);
+
+      // Small delay to allow Midtrans webhook to process
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Refresh the order status
+      await _loadOrderStatus();
+
+      // Show a snackbar to indicate refresh
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.sync, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('Status pembayaran diperbarui'),
+              ],
+            ),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadOrderStatus() async {
@@ -160,6 +207,17 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   Future<void> _manualRefresh() async {
     setState(() => _isLoading = true);
     await _loadOrderStatus();
+
+    // Show feedback
+    if (mounted) {
+      final statusText = _getStatusText(_paymentStatus);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Status: $statusText'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Color _getStatusColor(String status) {
@@ -485,6 +543,64 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   Widget _buildActionButtons() {
     return Column(
       children: [
+        // Prominent refresh button when payment is pending
+        if (_paymentStatus == 'pending') ...[
+          Container(
+            padding: EdgeInsets.all(16),
+            margin: EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.shade300),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: Colors.amber.shade700,
+                  size: 32,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Sudah selesai bayar?',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.amber.shade900,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Tekan tombol di bawah untuk memperbarui status pembayaran',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.amber.shade800),
+                ),
+                SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _manualRefresh,
+                  icon: _isLoading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(Icons.refresh),
+                  label: Text(
+                    _isLoading ? 'Memperbarui...' : 'Cek Status Pembayaran',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber.shade700,
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(double.infinity, 48),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         if (_paymentStatus == 'paid' || _paymentStatus == 'settlement')
           ElevatedButton(
             onPressed: () => context.go('/orders'),
