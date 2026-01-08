@@ -603,7 +603,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              '© 2024 Rempah Nusantara',
+              '© 2026 Rempah Nusantara',
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.textSecondary,
               ),

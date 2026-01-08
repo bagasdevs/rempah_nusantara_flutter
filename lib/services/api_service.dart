@@ -1238,6 +1238,51 @@ class ApiService {
     }
   }
 
+  // ==================== AI FEATURES METHODS ====================
+
+  /// Check if user is flagged as tengkulak (bulk buyer/middleman)
+  static Future<Map<String, dynamic>> checkTengkulak({
+    required double orderQuantityKg,
+    int? orderId,
+  }) async {
+    final body = <String, dynamic>{'order_quantity_kg': orderQuantityKg};
+    if (orderId != null) body['order_id'] = orderId;
+
+    final result = await post('/api/ai/check-tengkulak', body);
+
+    return result;
+  }
+
+  /// Get price predictions for spices
+  static Future<List<Map<String, dynamic>>> getPricePredictions({
+    String? spiceType,
+    int limit = 10,
+  }) async {
+    String endpoint = '/api/ai/price-predictions?limit=$limit';
+    if (spiceType != null) {
+      endpoint += '&spice_type=${Uri.encodeComponent(spiceType)}';
+    }
+
+    final result = await get(endpoint);
+
+    if (result['success'] == true) {
+      return List<Map<String, dynamic>>.from(result['data'] ?? []);
+    } else {
+      throw Exception(result['message'] ?? 'Failed to get price predictions');
+    }
+  }
+
+  /// Generate new price predictions (Admin only)
+  static Future<Map<String, dynamic>> generatePricePredictions() async {
+    final result = await post('/api/ai/price-predictions', {});
+
+    if (result['success'] == true) {
+      return result;
+    } else {
+      throw Exception(result['message'] ?? 'Failed to generate predictions');
+    }
+  }
+
   // ==================== HELPER METHODS ====================
 
   static Map<String, String> _buildHeaders() {

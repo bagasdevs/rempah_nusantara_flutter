@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:rempah_nusantara/screens/address_screen.dart';
 import 'package:rempah_nusantara/screens/ai_tools_screen.dart';
+import 'package:rempah_nusantara/screens/price_predictions_screen.dart';
 import 'package:rempah_nusantara/screens/buyer_login_screen.dart';
 import 'package:rempah_nusantara/screens/buyer_signup_screen.dart';
 import 'package:rempah_nusantara/screens/cart_screen.dart';
@@ -404,6 +405,16 @@ final GoRouter router = GoRouter(
           context: context,
           state: state,
           child: const AiToolsScreen(),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/price-predictions',
+      pageBuilder: (BuildContext context, GoRouterState state) {
+        return buildPageWithSlideTransition(
+          context: context,
+          state: state,
+          child: const PricePredictionsScreen(),
         );
       },
     ),

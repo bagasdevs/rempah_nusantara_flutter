@@ -19,7 +19,7 @@ class _NotificationScreenState extends State<NotificationScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _fetchNotifications();
   }
 
@@ -61,10 +61,15 @@ class _NotificationScreenState extends State<NotificationScreen>
     switch (type) {
       case 'order':
       case 'order_status':
+      case 'payment':
         return 'order';
       case 'promotion':
       case 'promo':
         return 'promotion';
+      case 'price_prediction':
+        return 'price_prediction';
+      case 'tengkulak_warning':
+        return 'warning';
       default:
         return 'system';
     }
@@ -74,10 +79,15 @@ class _NotificationScreenState extends State<NotificationScreen>
     switch (type) {
       case 'order':
       case 'order_status':
+      case 'payment':
         return Icons.local_shipping;
       case 'promotion':
       case 'promo':
         return Icons.local_offer;
+      case 'price_prediction':
+        return Icons.trending_up;
+      case 'tengkulak_warning':
+        return Icons.warning_amber;
       default:
         return Icons.notifications;
     }
@@ -87,10 +97,15 @@ class _NotificationScreenState extends State<NotificationScreen>
     switch (type) {
       case 'order':
       case 'order_status':
+      case 'payment':
         return AppColors.primary;
       case 'promotion':
       case 'promo':
         return AppColors.error;
+      case 'price_prediction':
+        return Colors.orange;
+      case 'tengkulak_warning':
+        return Colors.red;
       default:
         return AppColors.info;
     }
@@ -215,7 +230,8 @@ class _NotificationScreenState extends State<NotificationScreen>
           tabs: const [
             Tab(text: 'All'),
             Tab(text: 'Orders'),
-            Tab(text: 'Promotions'),
+            Tab(text: 'Harga'),
+            Tab(text: 'Promo'),
           ],
         ),
       ),
@@ -228,6 +244,7 @@ class _NotificationScreenState extends State<NotificationScreen>
               children: [
                 _buildNotificationList('all'),
                 _buildNotificationList('order'),
+                _buildNotificationList('price_prediction'),
                 _buildNotificationList('promotion'),
               ],
             ),
@@ -382,15 +399,23 @@ class _NotificationScreenState extends State<NotificationScreen>
 
     switch (filter) {
       case 'order':
-        message = 'No order notifications yet';
+        message = 'Belum ada notifikasi pesanan';
         icon = Icons.shopping_bag_outlined;
         break;
       case 'promotion':
-        message = 'No promotions available';
+        message = 'Belum ada promo tersedia';
         icon = Icons.local_offer_outlined;
         break;
+      case 'price_prediction':
+        message = 'Belum ada prediksi harga';
+        icon = Icons.trending_up_outlined;
+        break;
+      case 'warning':
+        message = 'Tidak ada peringatan';
+        icon = Icons.warning_amber_outlined;
+        break;
       default:
-        message = 'No notifications yet';
+        message = 'Belum ada notifikasi';
         icon = Icons.notifications_outlined;
     }
 
@@ -414,7 +439,7 @@ class _NotificationScreenState extends State<NotificationScreen>
             ),
             const SizedBox(height: AppSizes.spacingSmall),
             Text(
-              'When you receive notifications, they will appear here',
+              'Notifikasi akan muncul di sini',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -431,13 +456,20 @@ class _NotificationScreenState extends State<NotificationScreen>
 
     switch (type) {
       case 'order':
-        // Navigate to order detail
-        // Extract order ID from message if needed
-        // context.push('/order/12345');
+        // Navigate to orders screen
+        context.push('/orders');
         break;
       case 'promotion':
         // Navigate to promotion or products
         context.push('/products');
+        break;
+      case 'price_prediction':
+        // Navigate to AI tools screen for price prediction
+        context.push('/ai-tools');
+        break;
+      case 'warning':
+        // Show dialog about the warning
+        _showWarningDialog(notification);
         break;
       case 'system':
         // Show dialog or navigate to settings
@@ -445,5 +477,43 @@ class _NotificationScreenState extends State<NotificationScreen>
       default:
         break;
     }
+  }
+
+  void _showWarningDialog(Map<String, dynamic> notification) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber, color: Colors.red, size: 28),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                notification['title'] ?? 'Peringatan',
+                style: AppTextStyles.heading4,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          notification['message'] ?? '',
+          style: AppTextStyles.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Tutup'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navigate to contact support
+              context.push('/profile');
+            },
+            child: Text('Hubungi Admin'),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -190,7 +190,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Terakhir diperbarui: 15 Januari 2024',
+                      'Terakhir diperbarui: 15 Desember 2025',
                       style: AppTextStyles.caption.copyWith(
                         color: Colors.white.withOpacity(0.9),
                       ),

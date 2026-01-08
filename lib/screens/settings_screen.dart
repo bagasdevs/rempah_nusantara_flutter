@@ -578,14 +578,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Platform marketplace rempah dan resep tradisional Indonesia',
+              'Platform marketplace rempah dan resep tradisional Indonesia (Kelompok 3)',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              '© 2024 Rempah Nusantara',
+              '© 2026 Rempah Nusantara',
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.textSecondary,
               ),
