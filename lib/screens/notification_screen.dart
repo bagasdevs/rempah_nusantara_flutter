@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -12,55 +13,108 @@ class NotificationScreen extends StatefulWidget {
 class _NotificationScreenState extends State<NotificationScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = false;
-
-  final List<Map<String, dynamic>> _allNotifications = [
-    {
-      'id': 1,
-      'type': 'order',
-      'title': 'Pesanan Dikirim',
-      'message': 'Pesanan #12345 sedang dalam perjalanan',
-      'timestamp': '2 jam yang lalu',
-      'isRead': false,
-      'icon': Icons.local_shipping,
-      'iconColor': AppColors.primary,
-    },
-    {
-      'id': 2,
-      'type': 'promotion',
-      'title': 'Diskon 20% Hari Ini!',
-      'message': 'Dapatkan diskon 20% untuk semua produk rempah pilihan',
-      'timestamp': '5 jam yang lalu',
-      'isRead': false,
-      'icon': Icons.local_offer,
-      'iconColor': AppColors.error,
-    },
-    {
-      'id': 3,
-      'type': 'order',
-      'title': 'Pesanan Selesai',
-      'message': 'Pesanan #12344 telah selesai. Berikan rating Anda!',
-      'timestamp': '1 hari yang lalu',
-      'isRead': true,
-      'icon': Icons.check_circle,
-      'iconColor': AppColors.success,
-    },
-    {
-      'id': 4,
-      'type': 'system',
-      'title': 'Update Aplikasi',
-      'message': 'Versi baru tersedia dengan fitur-fitur menarik',
-      'timestamp': '2 hari yang lalu',
-      'isRead': true,
-      'icon': Icons.system_update,
-      'iconColor': AppColors.info,
-    },
-  ];
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _allNotifications = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _fetchNotifications();
+  }
+
+  Future<void> _fetchNotifications() async {
+    if (!ApiService.isAuthenticated) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await ApiService.getNotifications(limit: 50);
+      final notifications =
+          result['notifications'] as List<Map<String, dynamic>>;
+
+      setState(() {
+        _allNotifications = notifications.map((n) {
+          return {
+            'id': n['id'],
+            'type': _mapNotificationType(n['type']),
+            'title': n['title'] ?? '',
+            'message': n['message'] ?? '',
+            'timestamp': _formatTimestamp(n['created_at']),
+            'isRead': n['is_read'] ?? false,
+            'icon': _getIconForType(n['type']),
+            'iconColor': _getColorForType(n['type']),
+          };
+        }).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching notifications: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  String _mapNotificationType(String? type) {
+    switch (type) {
+      case 'order':
+      case 'order_status':
+        return 'order';
+      case 'promotion':
+      case 'promo':
+        return 'promotion';
+      default:
+        return 'system';
+    }
+  }
+
+  IconData _getIconForType(String? type) {
+    switch (type) {
+      case 'order':
+      case 'order_status':
+        return Icons.local_shipping;
+      case 'promotion':
+      case 'promo':
+        return Icons.local_offer;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getColorForType(String? type) {
+    switch (type) {
+      case 'order':
+      case 'order_status':
+        return AppColors.primary;
+      case 'promotion':
+      case 'promo':
+        return AppColors.error;
+      default:
+        return AppColors.info;
+    }
+  }
+
+  String _formatTimestamp(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+
+      if (diff.inMinutes < 60) {
+        return '${diff.inMinutes} menit yang lalu';
+      } else if (diff.inHours < 24) {
+        return '${diff.inHours} jam yang lalu';
+      } else if (diff.inDays < 7) {
+        return '${diff.inDays} hari yang lalu';
+      } else {
+        return '${date.day}/${date.month}/${date.year}';
+      }
+    } catch (e) {
+      return dateStr;
+    }
   }
 
   @override
@@ -76,21 +130,33 @@ class _NotificationScreenState extends State<NotificationScreen>
         .toList();
   }
 
-  void _markAsRead(int id) {
+  void _markAsRead(int id) async {
     setState(() {
       final index = _allNotifications.indexWhere((n) => n['id'] == id);
       if (index != -1) {
         _allNotifications[index]['isRead'] = true;
       }
     });
+
+    try {
+      await ApiService.markNotificationsAsRead(notificationId: id);
+    } catch (e) {
+      print('Error marking notification as read: $e');
+    }
   }
 
-  void _markAllAsRead() {
+  void _markAllAsRead() async {
     setState(() {
       for (var notification in _allNotifications) {
         notification['isRead'] = true;
       }
     });
+
+    try {
+      await ApiService.markNotificationsAsRead(markAll: true);
+    } catch (e) {
+      print('Error marking all as read: $e');
+    }
   }
 
   void _deleteNotification(int id) {
@@ -177,16 +243,7 @@ class _NotificationScreenState extends State<NotificationScreen>
 
     return RefreshIndicator(
       onRefresh: () async {
-        setState(() {
-          _isLoading = true;
-        });
-        // TODO: Fetch notifications from API
-        await Future.delayed(const Duration(seconds: 1));
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+        await _fetchNotifications();
       },
       child: ListView.separated(
         padding: const EdgeInsets.all(AppSizes.paddingMedium),

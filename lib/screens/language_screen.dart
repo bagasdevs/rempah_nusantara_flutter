@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/services/preferences_service.dart';
 
 class LanguageScreen extends StatefulWidget {
   const LanguageScreen({super.key});
@@ -10,6 +11,7 @@ class LanguageScreen extends StatefulWidget {
 
 class _LanguageScreenState extends State<LanguageScreen> {
   String _selectedLanguage = 'id'; // Default: Indonesian
+  bool _isLoading = true;
 
   final List<Map<String, dynamic>> _languages = [
     {
@@ -40,30 +42,65 @@ class _LanguageScreenState extends State<LanguageScreen> {
   }
 
   Future<void> _loadSavedLanguage() async {
-    // TODO: Load saved language from local storage
-    // For now, using default
-    setState(() {
-      _selectedLanguage = 'id';
-    });
+    setState(() => _isLoading = true);
+
+    try {
+      final savedLanguage = await PreferencesService.getLanguage();
+      if (mounted) {
+        setState(() {
+          _selectedLanguage = savedLanguage;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading language: $e');
+      if (mounted) {
+        setState(() {
+          _selectedLanguage = 'id';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _saveLanguage(String languageCode) async {
-    // TODO: Save language to local storage and apply app-wide
+    final previousLanguage = _selectedLanguage;
+
     setState(() {
       _selectedLanguage = languageCode;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_getChangeMessage(languageCode)),
-        backgroundColor: AppColors.success,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
-        ),
-      ),
-    );
+    try {
+      await PreferencesService.setLanguage(languageCode);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_getChangeMessage(languageCode)),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error saving language: $e');
+      // Revert on error
+      if (mounted) {
+        setState(() {
+          _selectedLanguage = previousLanguage;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan bahasa: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   String _getChangeMessage(String code) {
@@ -98,27 +135,33 @@ class _LanguageScreenState extends State<LanguageScreen> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoCard(),
-            const SizedBox(height: 24),
-            Text(
-              'Bahasa Tersedia',
-              style: AppTextStyles.heading3.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoCard(),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Bahasa Tersedia',
+                    style: AppTextStyles.heading3.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildLanguageList(),
+                  const SizedBox(height: 24),
+                  _buildComingSoonSection(),
+                  const SizedBox(height: 24),
+                  _buildNoteCard(),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            _buildLanguageList(),
-            const SizedBox(height: 24),
-            _buildComingSoonSection(),
-          ],
-        ),
-      ),
     );
   }
 
@@ -263,7 +306,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
             if (isSelected)
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
                 ),
@@ -359,34 +402,50 @@ class _LanguageScreenState extends State<LanguageScreen> {
                 .toList(),
           ),
         ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-            border: Border.all(
-              color: AppColors.primary.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: Row(
+      ],
+    );
+  }
+
+  Widget _buildNoteCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+        border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+              const Icon(
+                Icons.info_outline,
+                color: AppColors.primary,
+                size: 20,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Kami terus menambahkan dukungan untuk bahasa daerah Indonesia lainnya',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textPrimary,
-                    height: 1.4,
+                  'Catatan',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            'Kami terus menambahkan dukungan untuk bahasa daerah Indonesia lainnya. Pengaturan bahasa akan tersimpan dan diterapkan saat aplikasi restart.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textPrimary,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

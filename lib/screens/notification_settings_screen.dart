@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rempah_nusantara/config/app_theme.dart';
+import 'package:rempah_nusantara/services/preferences_service.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -11,6 +12,8 @@ class NotificationSettingsScreen extends StatefulWidget {
 
 class _NotificationSettingsScreenState
     extends State<NotificationSettingsScreen> {
+  bool _isLoading = true;
+
   // Notification preferences
   bool _pushNotifications = true;
   bool _emailNotifications = true;
@@ -21,6 +24,70 @@ class _NotificationSettingsScreenState
   bool _restock = true;
   bool _messages = true;
   bool _reviews = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final prefs = await PreferencesService.getNotificationPreferences();
+
+      if (mounted) {
+        setState(() {
+          _pushNotifications = prefs['push_notifications'] ?? true;
+          _emailNotifications = prefs['email_notifications'] ?? true;
+          _orderUpdates = prefs['order_updates'] ?? true;
+          _promotions = prefs['promotions'] ?? true;
+          _newProducts = prefs['new_products'] ?? false;
+          _priceDrops = prefs['price_drops'] ?? false;
+          _restock = prefs['restock'] ?? true;
+          _messages = prefs['messages'] ?? true;
+          _reviews = prefs['reviews'] ?? false;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading notification preferences: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _savePreference(String key, bool value) async {
+    try {
+      await PreferencesService.setNotificationPreference(key, value);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Pengaturan disimpan'),
+            backgroundColor: AppColors.success,
+            duration: const Duration(milliseconds: 800),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error saving preference: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,131 +106,136 @@ class _NotificationSettingsScreenState
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoCard(),
-            const SizedBox(height: 24),
-            _buildSection(
-              title: 'Metode Notifikasi',
-              children: [
-                _buildNotificationTile(
-                  icon: Icons.notifications_active_outlined,
-                  title: 'Push Notifications',
-                  subtitle: 'Terima notifikasi push di perangkat',
-                  value: _pushNotifications,
-                  onChanged: (value) {
-                    setState(() => _pushNotifications = value);
-                    _savePreferences();
-                  },
-                ),
-                _buildNotificationTile(
-                  icon: Icons.email_outlined,
-                  title: 'Email Notifications',
-                  subtitle: 'Terima notifikasi via email',
-                  value: _emailNotifications,
-                  onChanged: (value) {
-                    setState(() => _emailNotifications = value);
-                    _savePreferences();
-                  },
-                ),
-              ],
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoCard(),
+                  const SizedBox(height: 24),
+                  _buildSection(
+                    title: 'Metode Notifikasi',
+                    children: [
+                      _buildNotificationTile(
+                        icon: Icons.notifications_active_outlined,
+                        title: 'Push Notifications',
+                        subtitle: 'Terima notifikasi push di perangkat',
+                        value: _pushNotifications,
+                        onChanged: (value) {
+                          setState(() => _pushNotifications = value);
+                          _savePreference('push_notifications', value);
+                        },
+                      ),
+                      _buildNotificationTile(
+                        icon: Icons.email_outlined,
+                        title: 'Email Notifications',
+                        subtitle: 'Terima notifikasi via email',
+                        value: _emailNotifications,
+                        onChanged: (value) {
+                          setState(() => _emailNotifications = value);
+                          _savePreference('email_notifications', value);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSection(
+                    title: 'Notifikasi Pesanan',
+                    children: [
+                      _buildNotificationTile(
+                        icon: Icons.shopping_bag_outlined,
+                        title: 'Update Pesanan',
+                        subtitle: 'Status pesanan, pengiriman, dll',
+                        value: _orderUpdates,
+                        onChanged: (value) {
+                          setState(() => _orderUpdates = value);
+                          _savePreference('order_updates', value);
+                        },
+                      ),
+                      _buildNotificationTile(
+                        icon: Icons.chat_outlined,
+                        title: 'Pesan',
+                        subtitle: 'Pesan dari penjual atau pembeli',
+                        value: _messages,
+                        onChanged: (value) {
+                          setState(() => _messages = value);
+                          _savePreference('messages', value);
+                        },
+                      ),
+                      _buildNotificationTile(
+                        icon: Icons.star_outline,
+                        title: 'Review & Rating',
+                        subtitle: 'Pengingat untuk memberikan review',
+                        value: _reviews,
+                        onChanged: (value) {
+                          setState(() => _reviews = value);
+                          _savePreference('reviews', value);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSection(
+                    title: 'Notifikasi Produk',
+                    children: [
+                      _buildNotificationTile(
+                        icon: Icons.new_releases_outlined,
+                        title: 'Produk Baru',
+                        subtitle: 'Produk rempah baru tersedia',
+                        value: _newProducts,
+                        onChanged: (value) {
+                          setState(() => _newProducts = value);
+                          _savePreference('new_products', value);
+                        },
+                      ),
+                      _buildNotificationTile(
+                        icon: Icons.trending_down_outlined,
+                        title: 'Penurunan Harga',
+                        subtitle: 'Diskon & promo produk favorit',
+                        value: _priceDrops,
+                        onChanged: (value) {
+                          setState(() => _priceDrops = value);
+                          _savePreference('price_drops', value);
+                        },
+                      ),
+                      _buildNotificationTile(
+                        icon: Icons.inventory_2_outlined,
+                        title: 'Stok Tersedia',
+                        subtitle: 'Produk kembali tersedia',
+                        value: _restock,
+                        onChanged: (value) {
+                          setState(() => _restock = value);
+                          _savePreference('restock', value);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSection(
+                    title: 'Notifikasi Lainnya',
+                    children: [
+                      _buildNotificationTile(
+                        icon: Icons.local_offer_outlined,
+                        title: 'Promosi & Penawaran',
+                        subtitle: 'Voucher, diskon, dan penawaran khusus',
+                        value: _promotions,
+                        onChanged: (value) {
+                          setState(() => _promotions = value);
+                          _savePreference('promotions', value);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildResetButton(),
+                  const SizedBox(height: 32),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
-            _buildSection(
-              title: 'Notifikasi Pesanan',
-              children: [
-                _buildNotificationTile(
-                  icon: Icons.shopping_bag_outlined,
-                  title: 'Update Pesanan',
-                  subtitle: 'Status pesanan, pengiriman, dll',
-                  value: _orderUpdates,
-                  onChanged: (value) {
-                    setState(() => _orderUpdates = value);
-                    _savePreferences();
-                  },
-                ),
-                _buildNotificationTile(
-                  icon: Icons.chat_outlined,
-                  title: 'Pesan',
-                  subtitle: 'Pesan dari penjual atau pembeli',
-                  value: _messages,
-                  onChanged: (value) {
-                    setState(() => _messages = value);
-                    _savePreferences();
-                  },
-                ),
-                _buildNotificationTile(
-                  icon: Icons.star_outline,
-                  title: 'Review & Rating',
-                  subtitle: 'Pengingat untuk memberikan review',
-                  value: _reviews,
-                  onChanged: (value) {
-                    setState(() => _reviews = value);
-                    _savePreferences();
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _buildSection(
-              title: 'Notifikasi Produk',
-              children: [
-                _buildNotificationTile(
-                  icon: Icons.new_releases_outlined,
-                  title: 'Produk Baru',
-                  subtitle: 'Produk rempah baru tersedia',
-                  value: _newProducts,
-                  onChanged: (value) {
-                    setState(() => _newProducts = value);
-                    _savePreferences();
-                  },
-                ),
-                _buildNotificationTile(
-                  icon: Icons.trending_down_outlined,
-                  title: 'Penurunan Harga',
-                  subtitle: 'Diskon & promo produk favorit',
-                  value: _priceDrops,
-                  onChanged: (value) {
-                    setState(() => _priceDrops = value);
-                    _savePreferences();
-                  },
-                ),
-                _buildNotificationTile(
-                  icon: Icons.inventory_2_outlined,
-                  title: 'Stok Tersedia',
-                  subtitle: 'Produk kembali tersedia',
-                  value: _restock,
-                  onChanged: (value) {
-                    setState(() => _restock = value);
-                    _savePreferences();
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _buildSection(
-              title: 'Notifikasi Lainnya',
-              children: [
-                _buildNotificationTile(
-                  icon: Icons.local_offer_outlined,
-                  title: 'Promosi & Penawaran',
-                  subtitle: 'Voucher, diskon, dan penawaran khusus',
-                  value: _promotions,
-                  onChanged: (value) {
-                    setState(() => _promotions = value);
-                    _savePreferences();
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _buildResetButton(),
-          ],
-        ),
-      ),
     );
   }
 
@@ -177,14 +249,27 @@ class _NotificationSettingsScreenState
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: AppColors.primary, size: 24),
+          const Icon(Icons.info_outline, color: AppColors.primary, size: 24),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              'Kelola notifikasi yang ingin Anda terima dari aplikasi',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textPrimary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Kelola notifikasi yang ingin Anda terima',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Pengaturan akan tersimpan otomatis',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -289,26 +374,11 @@ class _NotificationSettingsScreenState
         label: const Text('Reset ke Default'),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textSecondary,
-          side: BorderSide(color: AppColors.border, width: 1),
+          side: const BorderSide(color: AppColors.border, width: 1),
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
           ),
-        ),
-      ),
-    );
-  }
-
-  void _savePreferences() {
-    // TODO: Save preferences to local storage or API
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Pengaturan notifikasi disimpan'),
-        backgroundColor: AppColors.success,
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
         ),
       ),
     );
@@ -341,26 +411,34 @@ class _NotificationSettingsScreenState
               ),
             ),
           ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _pushNotifications = true;
-                _emailNotifications = true;
-                _orderUpdates = true;
-                _promotions = true;
-                _newProducts = false;
-                _priceDrops = false;
-                _restock = true;
-                _messages = true;
-                _reviews = false;
-              });
+          ElevatedButton(
+            onPressed: () async {
               Navigator.pop(context);
-              _savePreferences();
+
+              // Reset to defaults
+              await PreferencesService.resetNotificationPreferences();
+
+              // Reload preferences
+              await _loadPreferences();
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Pengaturan direset ke default'),
+                    backgroundColor: AppColors.success,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+                    ),
+                  ),
+                );
+              }
             },
-            child: Text(
-              'Reset',
-              style: AppTextStyles.button.copyWith(color: AppColors.primary),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
             ),
+            child: const Text('Reset'),
           ),
         ],
       ),

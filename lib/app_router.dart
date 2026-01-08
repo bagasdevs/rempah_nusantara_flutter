@@ -33,6 +33,12 @@ import 'package:rempah_nusantara/screens/seller_signup_screen.dart';
 import 'package:rempah_nusantara/screens/settings_screen.dart';
 import 'package:rempah_nusantara/screens/splash_screen.dart';
 
+// Admin screens
+import 'package:rempah_nusantara/screens/admin/admin_dashboard_screen.dart';
+import 'package:rempah_nusantara/screens/admin/admin_users_screen.dart';
+import 'package:rempah_nusantara/screens/admin/admin_products_screen.dart';
+import 'package:rempah_nusantara/screens/admin/admin_orders_screen.dart';
+
 // Custom page transition builder for slide animation
 CustomTransitionPage<void> buildPageWithSlideTransition({
   required BuildContext context,
@@ -387,6 +393,58 @@ final GoRouter router = GoRouter(
           context: context,
           state: state,
           child: const AddressScreen(),
+        );
+      },
+    ),
+
+    // ==================== ADMIN ROUTES ====================
+    GoRoute(
+      path: '/admin',
+      pageBuilder: (BuildContext context, GoRouterState state) {
+        return buildPageWithSlideTransition(
+          context: context,
+          state: state,
+          child: const AdminDashboardScreen(),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/admin/dashboard',
+      pageBuilder: (BuildContext context, GoRouterState state) {
+        return buildPageWithSlideTransition(
+          context: context,
+          state: state,
+          child: const AdminDashboardScreen(),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/admin/users',
+      pageBuilder: (BuildContext context, GoRouterState state) {
+        return buildPageWithSlideTransition(
+          context: context,
+          state: state,
+          child: const AdminUsersScreen(),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/admin/products',
+      pageBuilder: (BuildContext context, GoRouterState state) {
+        return buildPageWithSlideTransition(
+          context: context,
+          state: state,
+          child: const AdminProductsScreen(),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/admin/orders',
+      pageBuilder: (BuildContext context, GoRouterState state) {
+        return buildPageWithSlideTransition(
+          context: context,
+          state: state,
+          child: const AdminOrdersScreen(),
         );
       },
     ),

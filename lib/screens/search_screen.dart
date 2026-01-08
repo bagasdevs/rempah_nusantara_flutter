@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rempah_nusantara/config/app_theme.dart';
 import 'package:rempah_nusantara/utils/image_utils.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
 
 class SearchScreen extends StatefulWidget {
   final String? initialQuery;
@@ -105,76 +106,54 @@ class _SearchScreenState extends State<SearchScreen> {
 
     _saveToRecentSearches(query);
 
-    // TODO: Replace with actual API call
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      final products = await ApiService.getProducts(search: query, limit: 50);
 
-    // Mock search results
-    final mockResults = _getMockSearchResults(query);
+      if (mounted) {
+        // Transform API response to match expected format
+        final results = products
+            .map(
+              (product) => {
+                'id': product['id'],
+                'type': 'product',
+                'name': product['name'] ?? '',
+                'price': (product['price'] is num)
+                    ? (product['price'] as num).toDouble()
+                    : double.tryParse(product['price']?.toString() ?? '0') ??
+                          0.0,
+                'unit': product['unit'] ?? 'kg',
+                'image': product['image_url'] ?? '',
+                'rating': (product['rating'] is num)
+                    ? (product['rating'] as num).toDouble()
+                    : double.tryParse(product['rating']?.toString() ?? '0') ??
+                          0.0,
+                'seller':
+                    product['seller_name'] ??
+                    product['seller']?['name'] ??
+                    'Seller',
+                'location':
+                    product['location'] ?? product['seller']?['location'] ?? '',
+              },
+            )
+            .toList();
 
-    if (mounted) {
-      setState(() {
-        _searchResults = mockResults;
-        _isLoading = false;
-      });
+        setState(() {
+          _searchResults = List<Map<String, dynamic>>.from(results);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Search error: $e');
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal mencari: $e')));
+      }
     }
-  }
-
-  List<Map<String, dynamic>> _getMockSearchResults(String query) {
-    final allResults = [
-      {
-        'id': 1,
-        'type': 'product',
-        'name': 'Jahe Merah Premium',
-        'price': 25000.0,
-        'unit': 'kg',
-        'image': '',
-        'rating': 4.8,
-        'seller': 'Tani Jaya',
-        'location': 'Bogor',
-      },
-      {
-        'id': 2,
-        'type': 'product',
-        'name': 'Kunyit Organik',
-        'price': 18000.0,
-        'unit': 'kg',
-        'image': '',
-        'rating': 4.7,
-        'seller': 'Berkah Tani',
-        'location': 'Bandung',
-      },
-
-      {
-        'id': 4,
-        'type': 'product',
-        'name': 'Lengkuas Segar',
-        'price': 22000.0,
-        'unit': 'kg',
-        'image': '',
-        'rating': 4.6,
-        'seller': 'Rempah Nusantara',
-        'location': 'Magelang',
-      },
-    ];
-
-    // Filter based on query
-    final filtered = allResults.where((item) {
-      final name = item['name'].toString().toLowerCase();
-      final q = query.toLowerCase();
-      return name.contains(q);
-    }).toList();
-
-    // Filter based on selected filter
-    if (_selectedFilter != 'All') {
-      final filterType = _selectedFilter.toLowerCase();
-      return filtered.where((item) {
-        if (filterType == 'products') return item['type'] == 'product';
-        if (filterType == 'sellers') return item['type'] == 'seller';
-        return true;
-      }).toList();
-    }
-
-    return filtered;
   }
 
   void _onSearchSubmitted(String query) {

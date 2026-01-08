@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rempah_nusantara/config/app_theme.dart';
 import 'package:rempah_nusantara/services/api_service.dart';
+import 'package:rempah_nusantara/services/preferences_service.dart';
 import 'package:rempah_nusantara/widgets/bottom_nav_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -14,6 +15,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = true;
   bool _darkMode = false;
+  String _selectedLanguage = 'id';
+  String? _userRole;
 
   @override
   void initState() {
@@ -24,19 +27,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     setState(() => _isLoading = true);
 
-    if (ApiService.isAuthenticated && ApiService.currentUserId != null) {
-      try {
-        await ApiService.getProfile(ApiService.currentUserId!);
-      } catch (e) {
-        print('Error loading profile: $e');
+    try {
+      // Load dark mode preference
+      final darkMode = await PreferencesService.getDarkMode();
+      final language = await PreferencesService.getLanguage();
+
+      String? userRole;
+      if (ApiService.isAuthenticated && ApiService.currentUserId != null) {
+        try {
+          final user = await ApiService.getCurrentUser();
+          userRole = user['role'] as String?;
+        } catch (e) {
+          print('Error loading user: $e');
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _darkMode = darkMode;
+          _selectedLanguage = language;
+          _userRole = userRole;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading settings: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
+  }
 
-    // TODO: Load dark mode preference from local storage
-    setState(() {
-      _darkMode = false;
-      _isLoading = false;
-    });
+  Future<void> _toggleDarkMode(bool value) async {
+    setState(() => _darkMode = value);
+
+    try {
+      await PreferencesService.setDarkMode(value);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value
+                  ? 'Mode gelap diaktifkan. Restart aplikasi untuk menerapkan.'
+                  : 'Mode terang diaktifkan. Restart aplikasi untuk menerapkan.',
+            ),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error saving dark mode preference: $e');
+      // Revert on error
+      if (mounted) {
+        setState(() => _darkMode = !value);
+      }
+    }
+  }
+
+  String _getLanguageDisplayName(String code) {
+    switch (code) {
+      case 'id':
+        return 'Bahasa Indonesia';
+      case 'en':
+        return 'English';
+      case 'jv':
+        return 'Basa Jawa';
+      case 'su':
+        return 'Basa Sunda';
+      default:
+        return 'Bahasa Indonesia';
+    }
   }
 
   @override
@@ -181,25 +246,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsItem(
                 icon: Icons.language_outlined,
                 title: 'Bahasa',
-                subtitle: 'Bahasa Indonesia',
-                onTap: () => context.push('/language'),
+                subtitle: _getLanguageDisplayName(_selectedLanguage),
+                onTap: () async {
+                  await context.push('/language');
+                  // Reload language setting after returning
+                  final language = await PreferencesService.getLanguage();
+                  if (mounted) {
+                    setState(() => _selectedLanguage = language);
+                  }
+                },
               ),
               const Divider(height: 1, indent: 72),
               _buildSettingsSwitchItem(
                 icon: Icons.dark_mode_outlined,
                 title: 'Mode Gelap',
-                subtitle: 'Aktifkan tema gelap',
+                subtitle: _darkMode ? 'Aktif' : 'Nonaktif',
                 value: _darkMode,
-                onChanged: (value) {
-                  setState(() => _darkMode = value);
-                  // TODO: Save preference and apply theme
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Tema gelap dalam pengembangan'),
-                      backgroundColor: AppColors.primary,
-                    ),
-                  );
-                },
+                onChanged: _toggleDarkMode,
               ),
             ],
           ),
@@ -247,14 +310,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.location_on_outlined,
                 title: 'Alamat',
                 subtitle: 'Kelola alamat pengiriman',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Fitur Alamat dalam pengembangan'),
-                      backgroundColor: AppColors.primary,
-                    ),
-                  );
-                },
+                onTap: () => context.push('/address'),
               ),
               const Divider(height: 1, indent: 72),
               _buildSettingsItem(
@@ -263,6 +319,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: 'Jual produk rempah Anda',
                 onTap: () => context.push('/manage-products'),
               ),
+              // Admin Panel - only show for admin users
+              if (_userRole == 'admin') ...[
+                const Divider(height: 1, indent: 72),
+                _buildSettingsItem(
+                  icon: Icons.admin_panel_settings,
+                  title: 'Admin Panel',
+                  subtitle: 'Kelola pengguna, produk & pesanan',
+                  onTap: () => context.push('/admin'),
+                  iconColor: Colors.deepOrange,
+                ),
+              ],
             ],
           ),
         ),
@@ -316,14 +383,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.description_outlined,
                 title: 'Syarat & Ketentuan',
                 subtitle: 'Ketentuan penggunaan aplikasi',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Syarat & Ketentuan dalam pengembangan'),
-                      backgroundColor: AppColors.primary,
-                    ),
-                  );
-                },
+                onTap: () => context.push('/privacy-policy'),
               ),
               const Divider(height: 1, indent: 72),
               _buildSettingsItem(
@@ -611,144 +671,199 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showDeleteAccountDialog() {
     final TextEditingController confirmController = TextEditingController();
+    bool isDeleting = false;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-              ),
-              child: const Icon(
-                Icons.delete_forever_outlined,
-                color: AppColors.error,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Hapus Akun',
-                style: AppTextStyles.heading3.copyWith(
-                  color: AppColors.textPrimary,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                ),
+                child: const Icon(
+                  Icons.delete_forever_outlined,
+                  color: AppColors.error,
                 ),
               ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
-                border: Border.all(color: AppColors.error.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.warning_amber_rounded,
-                    color: AppColors.error,
-                    size: 20,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Hapus Akun',
+                  style: AppTextStyles.heading3.copyWith(
+                    color: AppColors.textPrimary,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Tindakan ini tidak dapat dibatalkan!',
-                      style: AppTextStyles.bodySmall.copyWith(
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+                    border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
                         color: AppColors.error,
-                        fontWeight: FontWeight.bold,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tindakan ini tidak dapat dibatalkan!',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Menghapus akun akan:\n'
+                  '• Menghapus semua data pribadi Anda\n'
+                  '• Membatalkan pesanan yang sedang berjalan\n'
+                  '• Menghapus riwayat transaksi\n'
+                  '• Menghapus semua konten yang Anda buat\n\n'
+                  'Ketik "HAPUS" untuk mengkonfirmasi:',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmController,
+                  enabled: !isDeleting,
+                  decoration: InputDecoration(
+                    hintText: 'Ketik HAPUS',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        AppSizes.radiusMedium,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        AppSizes.radiusMedium,
+                      ),
+                      borderSide: const BorderSide(
+                        color: AppColors.error,
+                        width: 2,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Menghapus akun akan:\n'
-              '• Menghapus semua data pribadi Anda\n'
-              '• Membatalkan pesanan yang sedang berjalan\n'
-              '• Menghapus riwayat transaksi\n'
-              '• Menghapus semua konten yang Anda buat\n\n'
-              'Ketik "HAPUS" untuk mengkonfirmasi:',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textPrimary,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: confirmController,
-              decoration: InputDecoration(
-                hintText: 'Ketik HAPUS',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                  borderSide: const BorderSide(
-                    color: AppColors.error,
-                    width: 2,
-                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isDeleting
+                  ? null
+                  : () {
+                      confirmController.dispose();
+                      Navigator.pop(context);
+                    },
+              child: Text(
+                'Batal',
+                style: AppTextStyles.button.copyWith(
+                  color: isDeleting
+                      ? AppColors.textSecondary.withOpacity(0.5)
+                      : AppColors.textSecondary,
                 ),
               ),
+            ),
+            ElevatedButton(
+              onPressed: isDeleting
+                  ? null
+                  : () async {
+                      if (confirmController.text.toUpperCase() != 'HAPUS') {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Ketik "HAPUS" untuk mengkonfirmasi'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isDeleting = true);
+
+                      try {
+                        await ApiService.deleteAccount(
+                          confirmText: confirmController.text,
+                        );
+
+                        confirmController.dispose();
+
+                        if (mounted) {
+                          Navigator.pop(context);
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Akun berhasil dihapus'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+
+                          // Redirect to login
+                          context.go('/login');
+                        }
+                      } catch (e) {
+                        setDialogState(() => isDeleting = false);
+
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Gagal menghapus akun: ${e.toString().replaceAll('Exception: ', '')}',
+                              ),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: AppColors.error.withOpacity(0.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                ),
+              ),
+              child: isDeleting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text('Hapus Akun'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              confirmController.dispose();
-              Navigator.pop(context);
-            },
-            child: Text(
-              'Batal',
-              style: AppTextStyles.button.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (confirmController.text.toUpperCase() == 'HAPUS') {
-                confirmController.dispose();
-                Navigator.pop(context);
-                // TODO: Implement delete account API call
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Fitur hapus akun dalam pengembangan'),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Ketik "HAPUS" untuk mengkonfirmasi'),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-              ),
-            ),
-            child: const Text('Hapus Akun'),
-          ),
-        ],
       ),
     );
   }

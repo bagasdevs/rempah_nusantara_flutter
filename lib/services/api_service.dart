@@ -2,6 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'notification_service.dart';
 
 class ApiService {
   // Base URL - API endpoint
@@ -279,7 +280,32 @@ class ApiService {
 
   /// Logout
   static Future<void> logout() async {
+    try {
+      // Delete FCM token from server
+      await NotificationService.deleteToken();
+    } catch (e) {
+      print('FCM token delete error (ignored): $e');
+    }
+    try {
+      await post('/api/auth/logout', {});
+    } catch (e) {
+      print('Logout API error (ignored): $e');
+    }
     await clearAuth();
+  }
+
+  /// Delete account permanently
+  static Future<void> deleteAccount({required String confirmText}) async {
+    final result = await post('/api/auth/delete-account', {
+      'confirm': confirmText,
+    });
+
+    if (result['success'] == true) {
+      // Clear local auth data
+      await clearAuth();
+    } else {
+      throw Exception(result['message'] ?? 'Failed to delete account');
+    }
   }
 
   /// Get current user
@@ -296,6 +322,7 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getProducts({
     int? categoryId,
     String? sellerId,
+    String? search,
     int limit = 50,
     int offset = 0,
     String orderBy = 'created_at',
@@ -310,6 +337,10 @@ class ApiService {
 
     if (sellerId != null) {
       endpoint += '&seller_id=$sellerId';
+    }
+
+    if (search != null && search.isNotEmpty) {
+      endpoint += '&search=${Uri.encodeComponent(search)}';
     }
 
     final result = await get(endpoint);
@@ -851,6 +882,313 @@ class ApiService {
       return result['data'];
     } else {
       throw Exception(result['message']);
+    }
+  }
+
+  // ==================== SELLER METHODS ====================
+
+  /// Register as seller (upgrade from buyer to seller)
+  static Future<Map<String, dynamic>> registerSeller({
+    required String businessName,
+    required String address,
+  }) async {
+    final result = await post('/api/seller/register', {
+      'business_name': businessName,
+      'address': address,
+    });
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message'] ?? 'Failed to register as seller');
+    }
+  }
+
+  /// Get seller dashboard analytics
+  static Future<Map<String, dynamic>> getSellerDashboard({
+    int days = 30,
+  }) async {
+    final result = await get('/api/seller/dashboard?days=$days');
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message'] ?? 'Failed to get seller dashboard');
+    }
+  }
+
+  /// Get seller orders
+  static Future<List<Map<String, dynamic>>> getSellerOrders({
+    String? status,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    String endpoint = '/api/seller/orders?limit=$limit&offset=$offset';
+    if (status != null) {
+      endpoint += '&status=$status';
+    }
+
+    final result = await get(endpoint);
+
+    if (result['success'] == true) {
+      return List<Map<String, dynamic>>.from(result['data'] ?? []);
+    } else {
+      throw Exception(result['message'] ?? 'Failed to get seller orders');
+    }
+  }
+
+  // ==================== ADMIN API ====================
+
+  /// Get admin dashboard analytics
+  static Future<Map<String, dynamic>> getAdminDashboard({int days = 30}) async {
+    final result = await get('/api/admin/dashboard?days=$days');
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message'] ?? 'Failed to get admin dashboard');
+    }
+  }
+
+  /// Get admin users list
+  static Future<Map<String, dynamic>> getAdminUsers({
+    int limit = 20,
+    int offset = 0,
+    String? role,
+    String? status,
+    String? search,
+    String sortBy = 'created_at',
+    String sortOrder = 'DESC',
+  }) async {
+    String endpoint = '/api/admin/users?limit=$limit&offset=$offset';
+    endpoint += '&sort_by=$sortBy&sort_order=$sortOrder';
+    if (role != null) endpoint += '&role=$role';
+    if (status != null) endpoint += '&status=$status';
+    if (search != null && search.isNotEmpty) endpoint += '&search=$search';
+
+    final result = await get(endpoint);
+
+    if (result['success'] == true) {
+      return {
+        'users': List<Map<String, dynamic>>.from(result['data'] ?? []),
+        'pagination': result['pagination'] ?? {},
+      };
+    } else {
+      throw Exception(result['message'] ?? 'Failed to get users');
+    }
+  }
+
+  /// Get single user details (admin)
+  static Future<Map<String, dynamic>> getAdminUserDetail(String userId) async {
+    final result = await get('/api/admin/users?id=$userId');
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message'] ?? 'Failed to get user details');
+    }
+  }
+
+  /// Update user (role, ban status) - Admin
+  static Future<Map<String, dynamic>> updateAdminUser({
+    required String userId,
+    String? role,
+    bool? isBanned,
+    String? banReason,
+  }) async {
+    final body = <String, dynamic>{'user_id': userId};
+    if (role != null) body['role'] = role;
+    if (isBanned != null) body['is_banned'] = isBanned;
+    if (banReason != null) body['ban_reason'] = banReason;
+
+    final result = await put('/api/admin/users', body);
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message'] ?? 'Failed to update user');
+    }
+  }
+
+  /// Delete user - Admin
+  static Future<void> deleteAdminUser(String userId) async {
+    final result = await delete('/api/admin/users?id=$userId');
+
+    if (result['success'] != true) {
+      throw Exception(result['message'] ?? 'Failed to delete user');
+    }
+  }
+
+  /// Get admin products list
+  static Future<Map<String, dynamic>> getAdminProducts({
+    int limit = 20,
+    int offset = 0,
+    int? categoryId,
+    String? sellerId,
+    String? status,
+    String? stockStatus,
+    String? search,
+    String sortBy = 'created_at',
+    String sortOrder = 'DESC',
+  }) async {
+    String endpoint = '/api/admin/products?limit=$limit&offset=$offset';
+    endpoint += '&sort_by=$sortBy&sort_order=$sortOrder';
+    if (categoryId != null) endpoint += '&category_id=$categoryId';
+    if (sellerId != null) endpoint += '&seller_id=$sellerId';
+    if (status != null) endpoint += '&status=$status';
+    if (stockStatus != null) endpoint += '&stock_status=$stockStatus';
+    if (search != null && search.isNotEmpty) endpoint += '&search=$search';
+
+    final result = await get(endpoint);
+
+    if (result['success'] == true) {
+      return {
+        'products': List<Map<String, dynamic>>.from(result['data'] ?? []),
+        'pagination': result['pagination'] ?? {},
+      };
+    } else {
+      throw Exception(result['message'] ?? 'Failed to get products');
+    }
+  }
+
+  /// Get single product details (admin)
+  static Future<Map<String, dynamic>> getAdminProductDetail(
+    int productId,
+  ) async {
+    final result = await get('/api/admin/products?id=$productId');
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message'] ?? 'Failed to get product details');
+    }
+  }
+
+  /// Update product (status, featured, approved) - Admin
+  static Future<Map<String, dynamic>> updateAdminProduct({
+    required int productId,
+    bool? isActive,
+    bool? isFeatured,
+    bool? isApproved,
+    int? categoryId,
+    String? rejectionReason,
+  }) async {
+    final body = <String, dynamic>{'product_id': productId};
+    if (isActive != null) body['is_active'] = isActive;
+    if (isFeatured != null) body['is_featured'] = isFeatured;
+    if (isApproved != null) body['is_approved'] = isApproved;
+    if (categoryId != null) body['category_id'] = categoryId;
+    if (rejectionReason != null) body['rejection_reason'] = rejectionReason;
+
+    final result = await put('/api/admin/products', body);
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message'] ?? 'Failed to update product');
+    }
+  }
+
+  /// Delete product - Admin
+  static Future<Map<String, dynamic>> deleteAdminProduct(int productId) async {
+    final result = await delete('/api/admin/products?id=$productId');
+
+    if (result['success'] == true) {
+      return result['data'] ?? {};
+    } else {
+      throw Exception(result['message'] ?? 'Failed to delete product');
+    }
+  }
+
+  /// Get admin orders list
+  static Future<Map<String, dynamic>> getAdminOrders({
+    int limit = 20,
+    int offset = 0,
+    String? status,
+    String? paymentStatus,
+    String? buyerId,
+    String? sellerId,
+    String? search,
+    String? dateFrom,
+    String? dateTo,
+    String sortBy = 'created_at',
+    String sortOrder = 'DESC',
+  }) async {
+    String endpoint = '/api/admin/orders?limit=$limit&offset=$offset';
+    endpoint += '&sort_by=$sortBy&sort_order=$sortOrder';
+    if (status != null) endpoint += '&status=$status';
+    if (paymentStatus != null) endpoint += '&payment_status=$paymentStatus';
+    if (buyerId != null) endpoint += '&buyer_id=$buyerId';
+    if (sellerId != null) endpoint += '&seller_id=$sellerId';
+    if (search != null && search.isNotEmpty) endpoint += '&search=$search';
+    if (dateFrom != null) endpoint += '&date_from=$dateFrom';
+    if (dateTo != null) endpoint += '&date_to=$dateTo';
+
+    final result = await get(endpoint);
+
+    if (result['success'] == true) {
+      return {
+        'orders': List<Map<String, dynamic>>.from(result['data'] ?? []),
+        'pagination': result['pagination'] ?? {},
+        'stats': result['stats'] ?? {},
+      };
+    } else {
+      throw Exception(result['message'] ?? 'Failed to get orders');
+    }
+  }
+
+  /// Get single order details (admin)
+  static Future<Map<String, dynamic>> getAdminOrderDetail(int orderId) async {
+    final result = await get('/api/admin/orders?id=$orderId');
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message'] ?? 'Failed to get order details');
+    }
+  }
+
+  /// Update order (status, payment, tracking) - Admin
+  static Future<Map<String, dynamic>> updateAdminOrder({
+    required int orderId,
+    String? status,
+    String? paymentStatus,
+    String? trackingNumber,
+    String? adminNotes,
+    String? statusNotes,
+  }) async {
+    final body = <String, dynamic>{'order_id': orderId};
+    if (status != null) body['status'] = status;
+    if (paymentStatus != null) body['payment_status'] = paymentStatus;
+    if (trackingNumber != null) body['tracking_number'] = trackingNumber;
+    if (adminNotes != null) body['admin_notes'] = adminNotes;
+    if (statusNotes != null) body['status_notes'] = statusNotes;
+
+    final result = await put('/api/admin/orders', body);
+
+    if (result['success'] == true) {
+      return result['data'];
+    } else {
+      throw Exception(result['message'] ?? 'Failed to update order');
+    }
+  }
+
+  /// Cancel order - Admin
+  static Future<Map<String, dynamic>> cancelAdminOrder(
+    int orderId, {
+    String? reason,
+  }) async {
+    String endpoint = '/api/admin/orders?id=$orderId';
+    if (reason != null && reason.isNotEmpty) {
+      endpoint += '&reason=${Uri.encodeComponent(reason)}';
+    }
+
+    final result = await delete(endpoint);
+
+    if (result['success'] == true) {
+      return result['data'] ?? {};
+    } else {
+      throw Exception(result['message'] ?? 'Failed to cancel order');
     }
   }
 
