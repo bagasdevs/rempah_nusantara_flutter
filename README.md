@@ -1,6 +1,6 @@
 # 🌿 Rempah Nusantara
 
-> Platform E-Commerce Rempah Tradisional Indonesia
+> Platform E-Commerce Rempah Tradisional Indonesia - ReNusa
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.0+-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.0+-0175C2?logo=dart)](https://dart.dev)
@@ -23,7 +23,7 @@ Marketplace yang menghubungkan petani rempah dengan pembeli, dengan fitur AI unt
 ## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/yourusername/rempah_nusantara_flutter.git
+git clone https://github.com/bagasdevs/rempah_nusantara_flutter.git
 cd rempah_nusantara_flutter
 flutter pub get
 flutter run
@@ -53,17 +53,6 @@ lib/
 | Admin | `/api/admin/dashboard`, `/users`, `/products`, `/orders` |
 | AI | `/api/ai/price`, `/sentiment`, `/anomaly` |
 
-## 📊 Status
-
-| Component | Progress |
-|-----------|----------|
-| UI (33 screens) | ✅ 100% |
-| Buyer Features | ✅ 100% |
-| Seller Features | ✅ 100% |
-| Admin Panel | ✅ 100% |
-| Payment (Midtrans) | ✅ 100% |
-| AI Integration | ⚠️ 80% (perlu deploy FastAPI) |
-| Push Notifications | ⚠️ 70% (perlu config Firebase) |
 
 ## 📦 Dependencies
 
@@ -90,6 +79,6 @@ flutter build ios --release      # iOS
 
 ---
 
-**Version:** 1.1.0-beta | **Last Updated:** January 2025
+**Version:** 1.1.0-beta | **Last Updated:** January 2026
 
-🌿 *Made with ❤️ for Indonesian Spice Farmers*
+🌿 *Kelompok 3

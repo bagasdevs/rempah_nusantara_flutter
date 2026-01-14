@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rempah_nusantara/config/app_theme.dart';
 import 'package:rempah_nusantara/services/ai_service.dart';
+import 'package:rempah_nusantara/services/api_service.dart';
 
 class AiToolsScreen extends StatefulWidget {
   const AiToolsScreen({super.key});
@@ -125,8 +126,20 @@ class _PricePredictionTabState extends State<_PricePredictionTab> {
     (_) => TextEditingController(),
   );
   bool _isLoading = false;
+  bool _isLoadingProducts = false;
+  bool _isLoadingHistory = false;
   PricePredictionResult? _result;
   String? _error;
+
+  // Product selection
+  List<Map<String, dynamic>> _products = [];
+  Map<String, dynamic>? _selectedProduct;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
 
   @override
   void dispose() {
@@ -134,6 +147,62 @@ class _PricePredictionTabState extends State<_PricePredictionTab> {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _loadProducts() async {
+    if (!mounted) return;
+    setState(() => _isLoadingProducts = true);
+
+    try {
+      final products = await ApiService.getProducts(limit: 100);
+      if (mounted) {
+        setState(() {
+          _products = products;
+          _isLoadingProducts = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingProducts = false);
+      }
+    }
+  }
+
+  Future<void> _onProductSelected(Map<String, dynamic>? product) async {
+    setState(() {
+      _selectedProduct = product;
+      _result = null;
+      _error = null;
+    });
+
+    if (product == null) {
+      _clearAll();
+      return;
+    }
+
+    // Fetch price history for the selected product
+    setState(() => _isLoadingHistory = true);
+
+    try {
+      final productId = product['id'] as int;
+      final history = await AiService.getProductPriceHistory(productId);
+
+      if (mounted) {
+        // Auto-fill the price fields
+        for (int i = 0; i < 10 && i < history.prices.length; i++) {
+          _priceControllers[i].text = history.prices[i].toStringAsFixed(0);
+        }
+        setState(() => _isLoadingHistory = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error =
+              'Gagal mengambil riwayat harga: ${e.toString().replaceAll('Exception: ', '')}';
+          _isLoadingHistory = false;
+        });
+      }
+    }
   }
 
   void _fillSampleData() {
@@ -162,6 +231,7 @@ class _PricePredictionTabState extends State<_PricePredictionTab> {
     setState(() {
       _result = null;
       _error = null;
+      _selectedProduct = null;
     });
   }
 
@@ -189,7 +259,11 @@ class _PricePredictionTabState extends State<_PricePredictionTab> {
     });
 
     try {
-      final result = await AiService.predictPrice(prices);
+      final result = await AiService.predictPrice(
+        prices,
+        productId: _selectedProduct?['id'] as int?,
+        productName: _selectedProduct?['name'] as String?,
+      );
       if (mounted) {
         setState(() {
           _result = result;
@@ -261,6 +335,74 @@ class _PricePredictionTabState extends State<_PricePredictionTab> {
               ],
             ),
           ),
+
+          const SizedBox(height: 20),
+
+          // Product Selector
+          Text(
+            'Pilih Produk (Opsional)',
+            style: AppTextStyles.subtitle1.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: _isLoadingProducts
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  )
+                : DropdownButtonHideUnderline(
+                    child: DropdownButton<Map<String, dynamic>?>(
+                      isExpanded: true,
+                      value: _selectedProduct,
+                      hint: const Text('Pilih produk untuk auto-fill harga'),
+                      items: [
+                        const DropdownMenuItem<Map<String, dynamic>?>(
+                          value: null,
+                          child: Text('-- Input Manual --'),
+                        ),
+                        ..._products.map((product) {
+                          final name = product['name'] ?? 'Unknown';
+                          final price = product['price'] ?? 0;
+                          return DropdownMenuItem<Map<String, dynamic>?>(
+                            value: product,
+                            child: Text(
+                              '$name - Rp ${price.toStringAsFixed(0)}',
+                            ),
+                          );
+                        }),
+                      ],
+                      onChanged: _onProductSelected,
+                    ),
+                  ),
+          ),
+          if (_isLoadingHistory)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 8),
+                  Text('Mengambil riwayat harga...'),
+                ],
+              ),
+            ),
 
           const SizedBox(height: 20),
 
@@ -422,7 +564,20 @@ class _PricePredictionTabState extends State<_PricePredictionTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Prediksi Harga', style: AppTextStyles.caption),
+                    if (result.productName != null)
+                      Text(
+                        result.productName!,
+                        style: AppTextStyles.subtitle2.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    Text(
+                      result.productName != null
+                          ? 'Prediksi Harga'
+                          : 'Prediksi Harga',
+                      style: AppTextStyles.caption,
+                    ),
                     Text(
                       'Rp ${result.predictedPrice.toStringAsFixed(0)}',
                       style: AppTextStyles.heading2.copyWith(

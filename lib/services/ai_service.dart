@@ -94,10 +94,14 @@ class AiService {
   /// Predict optimal price based on 10 historical prices
   ///
   /// [historicalPrices] - List of exactly 10 historical prices
+  /// [productId] - Optional product ID for per-product prediction
+  /// [productName] - Optional product name for display
   /// Returns prediction result with predicted price and analysis
   static Future<PricePredictionResult> predictPrice(
-    List<double> historicalPrices,
-  ) async {
+    List<double> historicalPrices, {
+    int? productId,
+    String? productName,
+  }) async {
     if (historicalPrices.length != 10) {
       throw Exception('Exactly 10 historical prices are required');
     }
@@ -110,13 +114,53 @@ class AiService {
       final result = await _post('/predict/price', {'data': historicalPrices});
 
       if (result['success'] == true && result['data'] != null) {
-        return PricePredictionResult.fromJson(result['data']);
+        return PricePredictionResult.fromJson(
+          result['data'],
+          productId: productId,
+          productName: productName,
+        );
       } else {
         final error = result['error'];
         throw Exception(error?['message'] ?? 'Price prediction failed');
       }
     } catch (e) {
       print('❌ [AI] Price prediction error: $e');
+      rethrow;
+    }
+  }
+
+  /// Get price history for a specific product
+  ///
+  /// [productId] - Product ID to get history for
+  /// [days] - Number of days of history (default: 10)
+  /// Returns ProductPriceHistory with product info and price list
+  static Future<ProductPriceHistory> getProductPriceHistory(
+    int productId, {
+    int days = 10,
+  }) async {
+    try {
+      final url =
+          'https://api.bagas.website/api/ai/price-history?product_id=$productId&days=$days';
+      print('🤖 [AI] GET $url');
+
+      final response = await http
+          .get(Uri.parse(url), headers: _buildHeaders())
+          .timeout(_timeout);
+
+      print('🤖 [AI] Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true && result['data'] != null) {
+          return ProductPriceHistory.fromJson(result['data']);
+        } else {
+          throw Exception(result['message'] ?? 'Failed to get price history');
+        }
+      } else {
+        throw Exception('Failed to get price history: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ [AI] Price history error: $e');
       rethrow;
     }
   }
@@ -224,6 +268,42 @@ class AiService {
 
 // ==================== DATA MODELS ====================
 
+/// Product Price History Result
+class ProductPriceHistory {
+  final int productId;
+  final String productName;
+  final double currentPrice;
+  final String? imageUrl;
+  final List<double> prices;
+  final int days;
+  final bool hasRealHistory;
+
+  ProductPriceHistory({
+    required this.productId,
+    required this.productName,
+    required this.currentPrice,
+    this.imageUrl,
+    required this.prices,
+    required this.days,
+    required this.hasRealHistory,
+  });
+
+  factory ProductPriceHistory.fromJson(Map<String, dynamic> json) {
+    final product = json['product'] ?? {};
+    final pricesList = json['prices'] as List<dynamic>? ?? [];
+
+    return ProductPriceHistory(
+      productId: (product['id'] as num?)?.toInt() ?? 0,
+      productName: product['name'] ?? 'Unknown',
+      currentPrice: (product['current_price'] as num?)?.toDouble() ?? 0.0,
+      imageUrl: product['image_url'],
+      prices: pricesList.map((p) => (p as num).toDouble()).toList(),
+      days: (json['days'] as num?)?.toInt() ?? 0,
+      hasRealHistory: json['has_real_history'] ?? false,
+    );
+  }
+}
+
 /// Price Prediction Result
 class PricePredictionResult {
   final double predictedPrice;
@@ -234,6 +314,8 @@ class PricePredictionResult {
   final double inputLast;
   final double priceChange;
   final String trend;
+  final int? productId;
+  final String? productName;
 
   PricePredictionResult({
     required this.predictedPrice,
@@ -244,9 +326,15 @@ class PricePredictionResult {
     required this.inputLast,
     required this.priceChange,
     required this.trend,
+    this.productId,
+    this.productName,
   });
 
-  factory PricePredictionResult.fromJson(Map<String, dynamic> json) {
+  factory PricePredictionResult.fromJson(
+    Map<String, dynamic> json, {
+    int? productId,
+    String? productName,
+  }) {
     final inputPrices = json['input_prices'] ?? {};
 
     return PricePredictionResult(
@@ -258,12 +346,15 @@ class PricePredictionResult {
       inputLast: (inputPrices['last'] as num?)?.toDouble() ?? 0.0,
       priceChange: (json['price_change_percent'] as num?)?.toDouble() ?? 0.0,
       trend: json['trend'] ?? 'stable',
+      productId: productId,
+      productName: productName,
     );
   }
 
   bool get isPriceIncreasing => trend == 'up';
   bool get isPriceDecreasing => trend == 'down';
   bool get isPriceStable => trend == 'stable';
+  bool get hasProductInfo => productId != null && productName != null;
 
   String get priceChangeFormatted {
     final sign = priceChange >= 0 ? '+' : '';
@@ -282,22 +373,24 @@ class PricePredictionResult {
   }
 
   String get recommendation {
+    final productPrefix = productName != null ? '$productName: ' : '';
     if (priceChange > 5) {
-      return 'Harga diprediksi naik signifikan. Pertimbangkan untuk menaikkan harga jual.';
+      return '${productPrefix}Harga diprediksi naik signifikan. Pertimbangkan untuk menaikkan harga jual.';
     } else if (priceChange > 0) {
-      return 'Harga diprediksi naik sedikit. Harga saat ini masih kompetitif.';
+      return '${productPrefix}Harga diprediksi naik sedikit. Harga saat ini masih kompetitif.';
     } else if (priceChange < -5) {
-      return 'Harga diprediksi turun signifikan. Pertimbangkan promo atau diskon.';
+      return '${productPrefix}Harga diprediksi turun signifikan. Pertimbangkan promo atau diskon.';
     } else if (priceChange < 0) {
-      return 'Harga diprediksi turun sedikit. Pantau persaingan pasar.';
+      return '${productPrefix}Harga diprediksi turun sedikit. Pantau persaingan pasar.';
     } else {
-      return 'Harga diprediksi stabil. Pertahankan strategi harga saat ini.';
+      return '${productPrefix}Harga diprediksi stabil. Pertahankan strategi harga saat ini.';
     }
   }
 
   @override
   String toString() {
-    return 'PricePredictionResult(predicted: Rp $predictedPrice, change: $priceChangeFormatted, trend: $trend)';
+    final productInfo = productName != null ? ' for $productName' : '';
+    return 'PricePredictionResult(predicted: Rp $predictedPrice$productInfo, change: $priceChangeFormatted, trend: $trend)';
   }
 }
 
