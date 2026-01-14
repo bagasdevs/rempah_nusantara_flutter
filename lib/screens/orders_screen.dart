@@ -100,10 +100,11 @@ class _OrdersScreenState extends State<OrdersScreen>
         );
         return isPending;
       } else if (currentTab == 'Dibayar') {
-        // Dibayar = sudah bayar tapi belum diproses
+        // Dibayar = sudah bayar tapi belum diproses (dikemas)
+        // payment_status = paid/settlement AND order_status = paid OR pending_payment
         final isDibayar =
             (paymentStatus == 'paid' || paymentStatus == 'settlement') &&
-            orderStatus == 'pending_payment';
+            (orderStatus == 'paid' || orderStatus == 'pending_payment');
         print(
           '  → Dibayar check: $isDibayar (payment=$paymentStatus, order=$orderStatus)',
         );

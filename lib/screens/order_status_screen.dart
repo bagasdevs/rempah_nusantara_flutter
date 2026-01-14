@@ -557,7 +557,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen>
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Status akan diperbarui otomatis setiap 10 detik (${_pollCount}/$_maxPolls)',
+                    'Status akan diperbarui otomatis setiap 10 detik ($_pollCount/$_maxPolls)',
                     style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
                   ),
                 ],

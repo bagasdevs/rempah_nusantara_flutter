@@ -363,7 +363,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         ),
         const SizedBox(height: AppSizes.spacingMedium),
         DropdownButtonFormField<String>(
-          value: _selectedGender,
+          initialValue: _selectedGender,
           decoration: InputDecoration(
             labelText: 'Gender',
             prefixIcon: const Icon(Icons.wc_outlined),
@@ -473,7 +473,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         ),
         const SizedBox(height: AppSizes.spacingMedium),
         DropdownButtonFormField<String>(
-          value: _selectedProvince,
+          initialValue: _selectedProvince,
           decoration: InputDecoration(
             labelText: 'Province',
             prefixIcon: const Icon(Icons.map_outlined),

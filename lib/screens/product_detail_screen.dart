@@ -460,6 +460,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildSellerInfo(Map<String, dynamic> product) {
+    // Get seller info from product data
+    final String storeName =
+        product['seller_store_name'] ??
+        product['seller_full_name'] ??
+        'Penjual';
+    final String sellerAddress = product['seller_address'] ?? 'Indonesia';
+    final String? sellerAvatar = product['seller_avatar_url'];
+    final String sellerId = product['seller_id']?.toString() ?? '';
+
     return Container(
       color: Colors.white,
       padding: EdgeInsets.all(AppSizes.paddingMedium),
@@ -469,7 +478,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           CircleAvatar(
             radius: 24,
             backgroundColor: AppColors.background,
-            child: Icon(Icons.store, color: AppColors.primary),
+            backgroundImage: sellerAvatar != null
+                ? NetworkImage(sellerAvatar)
+                : null,
+            child: sellerAvatar == null
+                ? Icon(Icons.store, color: AppColors.primary)
+                : null,
           ),
           SizedBox(width: AppSizes.spacingMedium),
           Expanded(
@@ -478,11 +492,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               children: [
                 Row(
                   children: [
-                    Text(
-                      'Petani Lokal',
-                      style: AppTextStyles.subtitle1.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        storeName,
+                        style: AppTextStyles.subtitle1.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     SizedBox(width: AppSizes.paddingXS),
@@ -491,17 +509,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
                 SizedBox(height: AppSizes.paddingXS),
                 Text(
-                  'Magelang, Indonesia',
+                  sellerAddress,
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.textHint,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
           OutlinedButton(
             onPressed: () {
-              // TODO: Navigate to seller profile
+              // Navigate to seller profile
+              if (sellerId.isNotEmpty) {
+                context.push('/seller/$sellerId');
+              }
             },
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,

@@ -531,7 +531,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       value: value,
       onChanged: onChanged,
-      activeColor: AppColors.primary,
+      activeThumbColor: AppColors.primary,
     );
   }
 
@@ -558,11 +558,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              'Rempah Nusantara',
-              style: AppTextStyles.heading3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'ReNusa',
+                  style: AppTextStyles.heading3.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Rempah Nusantara',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -585,7 +598,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              '© 2026 Rempah Nusantara',
+              '© 2026 ReNusa',
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.textSecondary,
               ),

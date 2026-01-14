@@ -474,10 +474,18 @@ class _ManageProductsScreenState extends State<ManageProductsScreen>
       return _buildEmptyState('Data dashboard tidak tersedia');
     }
 
-    final products = _dashboardData!['products'] ?? {};
-    final orders = _dashboardData!['orders'] ?? {};
-    final sales = _dashboardData!['sales'] ?? {};
-    final rating = _dashboardData!['rating'] ?? {};
+    final products = _dashboardData!['products'] is Map
+        ? _dashboardData!['products'] as Map
+        : <String, dynamic>{};
+    final orders = _dashboardData!['orders'] is Map
+        ? _dashboardData!['orders'] as Map
+        : <String, dynamic>{};
+    final sales = _dashboardData!['sales'] is Map
+        ? _dashboardData!['sales'] as Map
+        : <String, dynamic>{};
+    final rating = _dashboardData!['rating'] is Map
+        ? _dashboardData!['rating'] as Map
+        : <String, dynamic>{};
     final topProducts = _dashboardData!['top_products'] ?? [];
     final recentOrders = _dashboardData!['recent_orders'] ?? [];
 
@@ -512,7 +520,8 @@ class _ManageProductsScreenState extends State<ManageProductsScreen>
             const SizedBox(height: 24),
 
             // Orders by Status
-            if ((orders['by_status'] as Map?)?.isNotEmpty ?? false) ...[
+            if (orders['by_status'] is Map &&
+                (orders['by_status'] as Map).isNotEmpty) ...[
               _buildSectionTitle('Status Pesanan'),
               const SizedBox(height: 12),
               _buildOrderStatusCards(orders['by_status'] as Map),
@@ -615,7 +624,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen>
     bool isSmallText = false,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -630,39 +639,47 @@ class _ManageProductsScreenState extends State<ManageProductsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 18),
           ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: isSmallText ? 16 : 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+          const SizedBox(height: 6),
+          Flexible(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: isSmallText ? 14 : 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
           Text(
             title,
             style: AppTextStyles.caption.copyWith(
               color: AppColors.textSecondary,
+              fontSize: 11,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           if (subtitle != null)
             Text(
               subtitle,
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.textSecondary,
-                fontSize: 10,
+                fontSize: 9,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
         ],
       ),

@@ -191,6 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final avatarUrl = _userData?['avatar_url'] as String?;
     final role = _userData?['role'] ?? ApiService.currentUserRole ?? 'buyer';
     final isSeller = role == 'seller' || role == 'admin';
+    final businessName = _userData?['business_name'] as String?;
 
     return Container(
       width: double.infinity,
@@ -250,13 +251,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                name,
-                style: AppTextStyles.heading3.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+              // Show business name for sellers, personal name below
+              if (isSeller &&
+                  businessName != null &&
+                  businessName.isNotEmpty) ...[
+                Text(
+                  businessName,
+                  style: AppTextStyles.heading3.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  name,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+              ] else
+                Text(
+                  name,
+                  style: AppTextStyles.heading3.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               if (isSeller) ...[
                 const SizedBox(height: 4),
                 Container(
@@ -576,11 +596,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              'Rempah Nusantara',
-              style: AppTextStyles.heading3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'ReNusa',
+                  style: AppTextStyles.heading3.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Rempah Nusantara',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -603,7 +636,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              '© 2026 Rempah Nusantara',
+              '© 2026 ReNusa',
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.textSecondary,
               ),

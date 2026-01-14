@@ -550,7 +550,7 @@ class _SentimentAnalysisTabState extends State<_SentimentAnalysisTab> {
 
   void _fillSampleNegative() {
     _textController.text =
-        'Kualitas rempah buruk, sudah tidak segar. Pengiriman lama dan customer service tidak responsif.';
+        'Kualitas rempah buruk, sudah tidak segar dan jelek.';
     setState(() {});
   }
 

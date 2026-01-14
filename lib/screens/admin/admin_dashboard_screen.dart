@@ -113,7 +113,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                 ),
                 Text(
-                  'Rempah Nusantara',
+                  'ReNusa',
                   style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
               ],

@@ -66,12 +66,24 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: AppSizes.paddingXL),
 
-            // App Name
+            // App Name - Short Version
+            const Text(
+              'ReNusa',
+              style: TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textWhite,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: AppSizes.paddingXS),
+
+            // App Name - Full Version
             const Text(
               'Rempah Nusantara',
               style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
                 color: AppColors.textWhite,
               ),
             ),

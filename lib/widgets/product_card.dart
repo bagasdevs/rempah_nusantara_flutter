@@ -145,11 +145,11 @@ class ProductCard extends StatelessWidget {
             ),
 
             // Content Section
-            Flexible(
+            Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSizes.paddingMD,
-                  vertical: AppSizes.paddingMD - 2,
+                  vertical: 6,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,24 +160,22 @@ class ProductCard extends StatelessWidget {
                       name,
                       style: AppTextStyles.subtitle1.copyWith(
                         fontSize: 12,
-                        height: 1.2,
+                        height: 1.1,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    const SizedBox(height: 2),
-
                     // Seller Name
-                    if (seller != null) ...[
+                    if (seller != null)
                       Text(
                         seller!,
-                        style: AppTextStyles.caption.copyWith(fontSize: 10),
+                        style: AppTextStyles.caption.copyWith(fontSize: 9),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
-                    ],
+
+                    const Spacer(),
 
                     // Rating and Price
                     Row(
@@ -191,7 +189,7 @@ class ProductCard extends StatelessWidget {
                             children: [
                               const Icon(
                                 Icons.star,
-                                size: 14,
+                                size: 12,
                                 color: AppColors.warning,
                               ),
                               const SizedBox(width: 2),
@@ -199,7 +197,7 @@ class ProductCard extends StatelessWidget {
                                 rating!,
                                 style: AppTextStyles.caption.copyWith(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 11,
+                                  fontSize: 10,
                                 ),
                               ),
                             ],
@@ -212,7 +210,7 @@ class ProductCard extends StatelessWidget {
                             style: AppTextStyles.subtitle1.copyWith(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                              fontSize: 12,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

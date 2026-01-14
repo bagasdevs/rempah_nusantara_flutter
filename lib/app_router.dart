@@ -199,6 +199,18 @@ final GoRouter router = GoRouter(
         );
       },
     ),
+    // Alias route for /seller/:id
+    GoRoute(
+      path: '/seller/:id',
+      pageBuilder: (BuildContext context, GoRouterState state) {
+        final sellerId = state.pathParameters['id']!;
+        return buildPageWithSlideTransition(
+          context: context,
+          state: state,
+          child: SellerProfileScreen(sellerId: sellerId),
+        );
+      },
+    ),
     GoRoute(
       path: '/cart',
       pageBuilder: (BuildContext context, GoRouterState state) {

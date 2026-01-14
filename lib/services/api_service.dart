@@ -1,6 +1,8 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 
@@ -225,11 +227,19 @@ class ApiService {
     }
   }
 
-  /// Upload file (multipart)
+  /// Upload file (multipart) - works on mobile only
+  /// For web, use uploadFileBytes instead
   static Future<Map<String, dynamic>> uploadFile(
     String filePath,
     String bucket,
   ) async {
+    // On web, fromPath is not supported
+    if (kIsWeb) {
+      throw Exception(
+        'uploadFile with path is not supported on web. Use uploadFileBytes instead.',
+      );
+    }
+
     try {
       final url = '$baseUrl/api/storage/upload';
       print('📤 [UPLOAD] $url');
@@ -258,6 +268,47 @@ class ApiService {
       throw Exception('SSL error: Server certificate issue. Contact support.');
     } catch (e) {
       print('❌ [UPLOAD] Error: $e');
+      throw Exception('Upload error: $e');
+    }
+  }
+
+  /// Upload file from bytes (multipart) - works on both web and mobile
+  static Future<Map<String, dynamic>> uploadFileBytes(
+    Uint8List bytes,
+    String filename,
+    String bucket,
+  ) async {
+    try {
+      final url = '$baseUrl/api/storage/upload';
+      print('📤 [UPLOAD BYTES] $url');
+      print('📤 [UPLOAD BYTES] Filename: $filename');
+      print('📤 [UPLOAD BYTES] Size: ${bytes.length} bytes');
+      print('📤 [UPLOAD BYTES] Bucket: $bucket');
+
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+
+      request.headers.addAll(_buildHeaders());
+      request.files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      );
+      request.fields['bucket'] = bucket;
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print('✅ [UPLOAD BYTES] Status: ${response.statusCode}');
+
+      return _handleResponse(response);
+    } on SocketException catch (e) {
+      print('❌ [UPLOAD BYTES] SocketException: $e');
+      throw Exception(
+        'Network error: Unable to connect to server. Check your internet connection.',
+      );
+    } on HandshakeException catch (e) {
+      print('❌ [UPLOAD BYTES] HandshakeException: $e');
+      throw Exception('SSL error: Server certificate issue. Contact support.');
+    } catch (e) {
+      print('❌ [UPLOAD BYTES] Error: $e');
       throw Exception('Upload error: $e');
     }
   }
@@ -305,10 +356,16 @@ class ApiService {
 
       // Save user role and name
       final user = result['data']['user'];
+      final userMetadata = user['user_metadata'] as Map<String, dynamic>? ?? {};
+
       if (user['role'] != null) {
         await setUserRole(user['role']);
       }
-      if (user['full_name'] != null) {
+
+      // Get name from user_metadata first, then fallback to user object
+      if (userMetadata['full_name'] != null) {
+        await setUserName(userMetadata['full_name']);
+      } else if (user['full_name'] != null) {
         await setUserName(user['full_name']);
       } else if (user['name'] != null) {
         await setUserName(user['name']);
@@ -577,7 +634,7 @@ class ApiService {
 
     final queryString = params.isEmpty
         ? ''
-        : '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+        : '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
 
     print('📡 [API] Query string: $queryString');
 

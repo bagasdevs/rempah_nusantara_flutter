@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
@@ -100,11 +101,17 @@ class _EditProductScreenState extends State<EditProductScreen> {
     // 1. Proses upload gambar jika ada gambar baru yang dipilih
     if (_selectedImageFile != null) {
       try {
-        final result = await ApiService.uploadFile(
-          _selectedImageFile!.path,
+        // Read file as bytes - works on both web and mobile
+        final Uint8List bytes = await _selectedImageFile!.readAsBytes();
+        final String filename = _selectedImageFile!.name;
+
+        final result = await ApiService.uploadFileBytes(
+          bytes,
+          filename,
           'product_images',
         );
-        imageUrl = result['file_url'];
+        // API returns { success: true, data: { url: "..." } }
+        imageUrl = result['data']?['url'] ?? result['url'];
       } catch (e) {
         print('Error uploading image: $e');
         if (mounted) {
@@ -291,7 +298,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: DropdownButtonFormField<int>(
-            value: _selectedCategoryId,
+            initialValue: _selectedCategoryId,
             decoration: InputDecoration(
               labelText: 'Kategori',
               labelStyle: const TextStyle(color: Colors.grey),

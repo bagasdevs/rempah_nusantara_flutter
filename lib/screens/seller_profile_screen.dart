@@ -167,7 +167,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildDashboardItem('Produk', _totalProducts.toString()),
-          _buildDashboardItem('Stok Tersedia', '${_totalStock} kg'),
+          _buildDashboardItem('Stok Tersedia', '$_totalStock kg'),
         ],
       ),
     );
